@@ -60,7 +60,7 @@
                 <div id="current-clock" class="text-xl font-semibold font-mono">--:--:--</div>
                 <div class="text-slate-400 text-sm">現在時刻 (Asia/Tokyo)</div>
                 <div class="text-slate-500 text-xs mt-2">
-                    Ver. 1.2.0 (Update: 2026/01/02)
+                    Ver. 1.2.1 (Update: 2026/01/02)
                 </div>
             </div>
         </header>
@@ -189,6 +189,7 @@
                                 <th class="py-3 px-2">日付</th>
                                 <th class="py-3 px-2">天気</th>
                                 <th class="py-3 px-2 text-center">降水確率 / 量</th>
+                                <th class="py-3 px-2 text-center">平均雲量</th>
                                 <th class="py-3 px-2 text-right">最高 / 最低気温</th>
                             </tr>
                         </thead>
@@ -579,6 +580,21 @@
                 const rainSum = daily.precipitation_sum[i];
                 const rainProb = daily.precipitation_probability_max[i];
                 
+                // 1時間ごとのデータから、この日の平均雲量を計算
+                const dateStr = t; // "YYYY-MM-DD"
+                let cloudSum = 0;
+                let cloudCount = 0;
+                
+                // データ量が少ないので単純ループで集計
+                hourly.time.forEach((hTime, hIndex) => {
+                    if (hTime.startsWith(dateStr)) {
+                        cloudSum += hourly.cloud_cover[hIndex];
+                        cloudCount++;
+                    }
+                });
+                
+                const avgCloud = cloudCount > 0 ? Math.round(cloudSum / cloudCount) : '-';
+
                 const row = document.createElement('tr');
                 row.className = `border-b border-slate-700/50 transition ${isSelectedDay ? 'bg-blue-500/20 border-l-4 border-l-blue-400' : 'hover:bg-white/5'}`;
                 
@@ -596,6 +612,12 @@
                     <td class="py-4 px-2 text-center">
                         <div class="text-sm">${rainProb !== null ? rainProb + '%' : '-'}</div>
                         <div class="text-xs text-blue-300">${rainSum > 0 ? rainSum + 'mm' : ''}</div>
+                    </td>
+                     <td class="py-4 px-2 text-center">
+                        <div class="text-sm font-semibold">${avgCloud !== '-' ? avgCloud + '%' : '-'}</div>
+                        <div class="w-16 bg-slate-700/50 rounded-full h-1 mx-auto mt-1">
+                            <div class="bg-slate-400 h-1 rounded-full" style="width: ${avgCloud !== '-' ? avgCloud : 0}%"></div>
+                        </div>
                     </td>
                     <td class="py-4 px-2 text-right">
                         <span class="font-bold text-orange-400">${maxTemp}°</span> 
