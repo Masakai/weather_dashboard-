@@ -60,7 +60,7 @@
                 <div id="current-clock" class="text-xl font-semibold font-mono">--:--:--</div>
                 <div class="text-slate-400 text-sm">現在時刻 (Asia/Tokyo)</div>
                 <div class="text-slate-500 text-xs mt-2">
-                    Ver. 1.2.5 (Update: 2026/01/02)
+                    Ver. 1.2.6 (Update: 2026/01/02)
                 </div>
             </div>
         </header>
@@ -145,7 +145,7 @@
                         <span class="font-bold text-lg" id="clouds-low">--%</span>
                     </div>
                     <div class="w-full bg-slate-700/50 rounded-full h-2">
-                        <!-- 下層雲: 明るいグレーに変更 (Slate-400 -> Gray-300) -->
+                        <!-- 下層雲: 明るいグレー -->
                         <div id="bar-low" class="bg-gray-300 h-2 rounded-full" style="width: 0%"></div>
                     </div>
                 </div>
@@ -193,6 +193,7 @@
                                 <th class="py-3 px-2">天気</th>
                                 <th class="py-3 px-2 text-center">降水確率 / 量</th>
                                 <th class="py-3 px-2 text-center">平均雲量</th>
+                                <th class="py-3 px-2 text-center">平均湿度</th>
                                 <th class="py-3 px-2 text-right">最高 / 最低気温</th>
                             </tr>
                         </thead>
@@ -373,7 +374,8 @@
         // --- 天気データ取得 & 描画 ---
 
         async function fetchWeather(lat, lon) {
-            const API_URL = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max&timezone=Asia%2FTokyo&past_days=2&forecast_days=10`;
+            // relative_humidity_2m を hourly に追加
+            const API_URL = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,relative_humidity_2m,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max&timezone=Asia%2FTokyo&past_days=2&forecast_days=10`;
 
             try {
                 const response = await fetch(API_URL);
@@ -584,20 +586,23 @@
                 const rainSum = daily.precipitation_sum[i];
                 const rainProb = daily.precipitation_probability_max[i];
                 
-                // 1時間ごとのデータから、この日の平均雲量を計算
+                // 1時間ごとのデータから、この日の平均雲量と湿度を計算
                 const dateStr = t; // "YYYY-MM-DD"
                 let cloudSum = 0;
-                let cloudCount = 0;
+                let humSum = 0;
+                let count = 0;
                 
                 // データ量が少ないので単純ループで集計
                 hourly.time.forEach((hTime, hIndex) => {
                     if (hTime.startsWith(dateStr)) {
                         cloudSum += hourly.cloud_cover[hIndex];
-                        cloudCount++;
+                        humSum += hourly.relative_humidity_2m[hIndex];
+                        count++;
                     }
                 });
                 
-                const avgCloud = cloudCount > 0 ? Math.round(cloudSum / cloudCount) : '-';
+                const avgCloud = count > 0 ? Math.round(cloudSum / count) : '-';
+                const avgHum = count > 0 ? Math.round(humSum / count) : '-';
 
                 const row = document.createElement('tr');
                 row.className = `border-b border-slate-700/50 transition ${isSelectedDay ? 'bg-blue-500/20 border-l-4 border-l-blue-400' : 'hover:bg-white/5'}`;
@@ -621,6 +626,12 @@
                         <div class="text-sm font-semibold">${avgCloud !== '-' ? avgCloud + '%' : '-'}</div>
                         <div class="w-16 bg-slate-700/50 rounded-full h-1 mx-auto mt-1">
                             <div class="bg-slate-400 h-1 rounded-full" style="width: ${avgCloud !== '-' ? avgCloud : 0}%"></div>
+                        </div>
+                    </td>
+                    <td class="py-4 px-2 text-center">
+                        <div class="text-sm font-semibold text-blue-200 flex items-center justify-center gap-1">
+                            <i data-lucide="droplet" class="w-3 h-3"></i>
+                            ${avgHum !== '-' ? avgHum + '%' : '-'}
                         </div>
                     </td>
                     <td class="py-4 px-2 text-right">
