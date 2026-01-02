@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>天気ダッシュボード</title>
+    <title>天体観測できるかな？</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
@@ -45,11 +45,18 @@
         <!-- ヘッダー -->
         <header class="flex flex-col md:flex-row justify-between items-center gap-4">
             <div class="flex-1">
-                <h1 class="text-3xl font-bold flex items-center gap-2">
+                <!-- メインタイトル -->
+                <h1 class="text-3xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-100 via-blue-200 to-blue-400 mb-3 flex items-center gap-3">
+                    <i data-lucide="telescope" class="text-yellow-200 w-8 h-8 md:w-12 md:h-12"></i>
+                    天体観測できるかな？
+                </h1>
+                
+                <!-- 場所情報 -->
+                <div class="flex items-center gap-2 text-xl font-semibold text-slate-200 pl-1">
                     <i data-lucide="map-pin" class="text-blue-400"></i>
                     <span id="location-name">位置情報を取得中...</span>
-                </h1>
-                <p class="text-slate-400 text-sm mt-1 flex items-center gap-2">
+                </div>
+                <p class="text-slate-400 text-sm mt-1 flex items-center gap-2 pl-1">
                     <span id="coords-display">緯度: -- | 経度: --</span>
                     <button onclick="toggleMap()" class="text-blue-300 hover:text-white underline text-xs ml-2">
                         地図で場所を変更
@@ -60,7 +67,7 @@
                 <div id="current-clock" class="text-xl font-semibold font-mono">--:--:--</div>
                 <div class="text-slate-400 text-sm">現在時刻 (Asia/Tokyo)</div>
                 <div class="text-slate-500 text-xs mt-2">
-                    Ver. 1.4.0 (Update: 2026/01/02)
+                    Ver. 1.5.0 (Update: 2026/01/02)
                 </div>
             </div>
         </header>
