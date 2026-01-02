@@ -60,7 +60,7 @@
                 <div id="current-clock" class="text-xl font-semibold font-mono">--:--:--</div>
                 <div class="text-slate-400 text-sm">現在時刻 (Asia/Tokyo)</div>
                 <div class="text-slate-500 text-xs mt-2">
-                    Ver. 1.2.2 (Update: 2026/01/02)
+                    Ver. 1.2.3 (Update: 2026/01/02)
                 </div>
             </div>
         </header>
@@ -127,7 +127,8 @@
                         <span class="font-bold text-lg" id="clouds-high">--%</span>
                     </div>
                     <div class="w-full bg-slate-700/50 rounded-full h-2">
-                        <div id="bar-high" class="bg-blue-300 h-2 rounded-full" style="width: 0%"></div>
+                        <!-- 上層雲: Violet -->
+                        <div id="bar-high" class="bg-violet-400 h-2 rounded-full" style="width: 0%"></div>
                     </div>
 
                     <div class="flex justify-between items-center mt-1">
@@ -135,7 +136,8 @@
                         <span class="font-bold text-lg" id="clouds-mid">--%</span>
                     </div>
                     <div class="w-full bg-slate-700/50 rounded-full h-2">
-                        <div id="bar-mid" class="bg-blue-400 h-2 rounded-full" style="width: 0%"></div>
+                        <!-- 中層雲: Sky -->
+                        <div id="bar-mid" class="bg-sky-400 h-2 rounded-full" style="width: 0%"></div>
                     </div>
 
                     <div class="flex justify-between items-center mt-1">
@@ -143,6 +145,7 @@
                         <span class="font-bold text-lg" id="clouds-low">--%</span>
                     </div>
                     <div class="w-full bg-slate-700/50 rounded-full h-2">
+                        <!-- 下層雲: Slate (維持) -->
                         <div id="bar-low" class="bg-slate-400 h-2 rounded-full" style="width: 0%"></div>
                     </div>
                 </div>
@@ -536,6 +539,7 @@
             });
 
             // 雲チャート (積み上げ順を修正: Low -> Mid -> High)
+            // 配色: 下層=Slate, 中層=Sky, 上層=Violet
             const ctxCloud = document.getElementById('cloudChart').getContext('2d');
             if(cloudChartInstance) cloudChartInstance.destroy();
 
@@ -545,8 +549,8 @@
                     labels: labels,
                     datasets: [
                         { label: '下層雲', data: cloudLow, borderColor: '#94a3b8', backgroundColor: 'rgba(148, 163, 184, 0.6)', borderWidth: 1, fill: true, tension: 0.4, pointRadius: 0 },
-                        { label: '中層雲', data: cloudMid, borderColor: '#60a5fa', backgroundColor: 'rgba(96, 165, 250, 0.6)', borderWidth: 1, fill: true, tension: 0.4, pointRadius: 0 },
-                        { label: '上層雲', data: cloudHigh, borderColor: '#93c5fd', backgroundColor: 'rgba(147, 197, 253, 0.6)', borderWidth: 1, fill: true, tension: 0.4, pointRadius: 0 }
+                        { label: '中層雲', data: cloudMid, borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.6)', borderWidth: 1, fill: true, tension: 0.4, pointRadius: 0 },
+                        { label: '上層雲', data: cloudHigh, borderColor: '#a78bfa', backgroundColor: 'rgba(167, 139, 250, 0.6)', borderWidth: 1, fill: true, tension: 0.4, pointRadius: 0 }
                     ]
                 },
                 options: {
