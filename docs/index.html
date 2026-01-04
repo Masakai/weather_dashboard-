@@ -67,7 +67,7 @@
                 <div id="current-clock" class="text-xl font-semibold font-mono">--:--:--</div>
                 <div class="text-slate-400 text-sm">現在時刻 (Asia/Tokyo)</div>
                 <div class="text-slate-500 text-xs mt-2">
-                    Ver. 1.5.0 (Update: 2026/01/02)
+                    Ver. 1.5.1 (Update: 2026/01/05)
                 </div>
             </div>
         </header>
@@ -204,6 +204,7 @@
             <div class="glass-panel rounded-2xl p-6">
                 <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
                     <i data-lucide="calendar" class="text-green-400 w-5 h-5"></i> 週間天気予報
+                    <span class="text-xs font-normal text-slate-400 ml-2">※日付をクリックするとその日の詳細を表示します</span>
                 </h3>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
@@ -469,6 +470,31 @@
             }
         }
 
+        // 新しい関数: 週間予報の日付クリック時の処理
+        function selectDate(dateStr) {
+            // 現在の入力値（時間）を取得して、日付だけ差し替える
+            const currentVal = document.getElementById('target-datetime').value;
+            let targetMoment = moment(dateStr); 
+            
+            if (currentVal) {
+                const currentMoment = moment(currentVal);
+                // 時間と分を維持
+                targetMoment.hour(currentMoment.hour());
+                targetMoment.minute(currentMoment.minute());
+            } else {
+                // デフォルトは正午などにするか、現在時刻に合わせる
+                const now = moment();
+                targetMoment.hour(now.hour());
+                targetMoment.minute(now.minute());
+            }
+
+            setDatePickerValue(targetMoment);
+            renderDashboard(targetMoment);
+            
+            // スクロールを上部へ（スマホなどで見やすくするため）
+            document.getElementById('dashboard-content').scrollIntoView({ behavior: 'smooth' });
+        }
+
         function getWeatherInfo(code) {
             if (code === 0) return { label: '快晴', icon: 'sun', color: 'text-orange-400' };
             if (code >= 1 && code <= 3) return { label: '曇り・晴れ間', icon: 'cloud-sun', color: 'text-gray-300' };
@@ -713,8 +739,10 @@
                 const avgHum = count > 0 ? Math.round(humSum / count) : '-';
 
                 const row = document.createElement('tr');
-                row.className = `border-b border-slate-700/50 transition ${isSelectedDay ? 'bg-blue-500/20 border-l-4 border-l-blue-400' : 'hover:bg-white/5'}`;
-                
+                // cursor-pointer を追加、onclickを追加
+                row.className = `border-b border-slate-700/50 transition cursor-pointer ${isSelectedDay ? 'bg-blue-500/20 border-l-4 border-l-blue-400' : 'hover:bg-white/5'}`;
+                row.onclick = () => selectDate(t); // クリックイベント
+
                 row.innerHTML = `
                     <td class="py-4 px-2">
                         <div class="font-bold ${isSelectedDay ? 'text-blue-300' : 'text-white'}">${date.format('M/D')}</div>
