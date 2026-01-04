@@ -67,7 +67,7 @@
                 <div id="current-clock" class="text-xl font-semibold font-mono">--:--:--</div>
                 <div class="text-slate-400 text-sm">現在時刻 (Asia/Tokyo)</div>
                 <div class="text-slate-500 text-xs mt-2">
-                    Ver. 1.5.6 (Update: 2026/01/05)
+                    Ver. 1.5.3 (Restored)
                 </div>
             </div>
         </header>
@@ -173,10 +173,6 @@
                         <div class="text-4xl mb-1" id="current-moon-icon">🌑</div>
                         <div class="text-xl font-bold text-yellow-100" id="current-moon-age-text">--</div>
                         <div class="text-sm text-yellow-200" id="current-moon-name">--</div>
-                        <div class="text-xs text-slate-400 mt-2 flex items-center gap-1">
-                            <i data-lucide="arrow-up-circle" class="w-3 h-3 text-orange-300"></i> 
-                            <span id="current-moon-rise">--:--</span>
-                        </div>
                     </div>
                 </div>
              </div>
@@ -325,7 +321,6 @@
                 const response = await fetch(url, {
                     headers: { 'User-Agent': 'WeatherDashboardDemo/1.0' } // マナーとしてUser-Agentを設定
                 });
-                if (!response.ok) throw new Error('Address fetch failed');
                 const data = await response.json();
                 
                 if (data && data.address) {
@@ -434,35 +429,12 @@
         // --- 天気データ取得 & 描画 ---
 
         async function fetchWeather(lat, lon) {
-            // Validate lat/lon to avoid HTTP 400 errors
-            if (typeof lat !== 'number' || typeof lon !== 'number') {
-                console.error("Invalid coordinates for weather fetch:", lat, lon);
-                return;
-            }
-
-            // Use URL object for safer parameter construction
-            const url = new URL("https://api.open-meteo.com/v1/forecast");
-            const params = {
-                latitude: lat,
-                longitude: lon,
-                hourly: "temperature_2m,relative_humidity_2m,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high",
-                daily: "weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,moonrise",
-                timezone: "Asia/Tokyo",
-                past_days: 2,
-                forecast_days: 10
-            };
-            
-            // Append parameters
-            Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+            // API URL (moonrise を削除して1.5.3の状態に戻す)
+            const API_URL = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,relative_humidity_2m,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max&timezone=Asia%2FTokyo&past_days=2&forecast_days=10`;
 
             try {
-                const response = await fetch(url.toString());
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const response = await fetch(API_URL);
                 weatherData = await response.json();
-                
-                if (weatherData.error) {
-                    throw new Error(weatherData.reason || "API returned an error");
-                }
                 
                 // 初回は現在時刻で描画
                 // もしユーザーが過去の日付を選択中の場合はそのまま維持しても良いが、
@@ -536,10 +508,7 @@
         }
 
         function renderDashboard(targetMoment) {
-            if (!weatherData || !weatherData.hourly || !weatherData.daily) {
-                document.getElementById('loading').innerHTML = '<span class="text-yellow-400">データが不完全です。再読み込みしてください。</span>';
-                return;
-            }
+            if (!weatherData) return;
 
             const hourly = weatherData.hourly;
             const daily = weatherData.daily;
@@ -589,14 +558,6 @@
             document.getElementById('current-moon-icon').innerText = moonData.icon;
             document.getElementById('current-moon-age-text').innerText = moonData.age;
             document.getElementById('current-moon-name').innerText = moonData.phaseName;
-
-            // 月の出時刻の更新
-            const dailyIndex = daily.time.findIndex(t => moment(t).isSame(targetMoment, 'day'));
-            let moonRiseStr = '--:--';
-            if (dailyIndex !== -1 && daily.moonrise && daily.moonrise[dailyIndex]) {
-                moonRiseStr = moment(daily.moonrise[dailyIndex]).format('H:mm');
-            }
-            document.getElementById('current-moon-rise').innerText = moonRiseStr;
 
 
             // サマリーテキスト
