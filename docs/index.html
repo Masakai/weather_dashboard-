@@ -38,6 +38,43 @@
         .leaflet-container {
             background: #1e293b;
         }
+        /* Night Vision Mode */
+        body.night-vision {
+            filter: hue-rotate(180deg) invert(1);
+            background: #300000 !important;
+        }
+        body.night-vision .glass-panel {
+            background: rgba(100, 0, 0, 0.3) !important;
+            border-color: rgba(200, 0, 0, 0.3) !important;
+        }
+        body.night-vision * {
+            color: #ff6666 !important;
+            border-color: #ff3333 !important;
+        }
+        /* Starry Score Meter */
+        .score-meter {
+            width: 200px;
+            height: 200px;
+            position: relative;
+        }
+        .score-circle {
+            stroke-dasharray: 440;
+            stroke-dashoffset: 440;
+            transition: stroke-dashoffset 1s ease;
+        }
+        /* Timeline styles */
+        .timeline-bar {
+            position: relative;
+            height: 60px;
+            background: linear-gradient(to right, #1e293b 0%, #0f172a 50%, #1e293b 100%);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .timeline-segment {
+            position: absolute;
+            height: 100%;
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white min-h-screen p-4 md:p-8">
@@ -68,8 +105,11 @@
             <div class="text-right flex flex-col items-end">
                 <div id="current-clock" class="text-xl font-semibold font-mono">--:--:--</div>
                 <div class="text-slate-400 text-sm">現在時刻 (Asia/Tokyo)</div>
-                <div class="text-slate-500 text-xs mt-2">
-                    Ver. 1.5.3 (Restored)
+                <div class="text-slate-500 text-xs mt-2 flex items-center gap-2">
+                    Ver. 2.0.0
+                    <button onclick="toggleNightVision()" class="text-xs bg-red-900/30 hover:bg-red-800/50 px-2 py-1 rounded border border-red-600/30" title="ナイトビジョンモード">
+                        <i data-lucide="moon" class="w-3 h-3 inline"></i>
+                    </button>
                 </div>
             </div>
         </header>
@@ -109,6 +149,45 @@
         <div id="loading" class="text-center py-20 text-xl animate-pulse">天気データを取得中...</div>
         
         <div id="dashboard-content" class="hidden space-y-6">
+            <!-- 星空視認性スコア（大型表示） -->
+            <div class="glass-panel rounded-2xl p-6">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div class="flex flex-col items-center justify-center">
+                        <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                            <i data-lucide="sparkles" class="text-yellow-400 w-5 h-5"></i> 星空視認性スコア
+                        </h3>
+                        <svg class="score-meter" viewBox="0 0 160 160">
+                            <circle cx="80" cy="80" r="70" fill="none" stroke="#334155" stroke-width="12"/>
+                            <circle id="score-circle" class="score-circle" cx="80" cy="80" r="70" fill="none" stroke="url(#scoreGradient)" stroke-width="12" stroke-linecap="round" transform="rotate(-90 80 80)"/>
+                            <defs>
+                                <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#ef4444;stop-opacity:1" />
+                                    <stop offset="50%" style="stop-color:#eab308;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#22c55e;stop-opacity:1" />
+                                </linearGradient>
+                            </defs>
+                            <text id="score-text" x="80" y="75" text-anchor="middle" font-size="36" font-weight="bold" fill="#fff">--</text>
+                            <text x="80" y="95" text-anchor="middle" font-size="12" fill="#94a3b8">/ 100</text>
+                        </svg>
+                        <p id="score-comment" class="text-sm text-slate-300 mt-3 text-center">計算中...</p>
+                    </div>
+
+                    <!-- お気に入り地点 -->
+                    <div class="flex-1 w-full">
+                        <h4 class="font-semibold text-sm mb-3 flex items-center gap-2">
+                            <i data-lucide="bookmark" class="w-4 h-4 text-blue-400"></i>
+                            お気に入り地点
+                        </h4>
+                        <div id="favorite-locations" class="space-y-2">
+                            <button onclick="addFavoriteLocation()" class="w-full bg-slate-800/50 hover:bg-slate-700/50 rounded-lg p-3 text-sm border border-slate-700 flex items-center justify-center gap-2">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                                現在地をお気に入りに追加
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- メイン指標 -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <!-- 気温カード -->
@@ -156,6 +235,104 @@
                     <div class="w-full bg-slate-700/50 rounded-full h-2">
                         <!-- 下層雲: 明るいグレー -->
                         <div id="bar-low" class="bg-gray-300 h-2 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 追加気象データ + 天文薄明時刻 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <!-- 追加気象データ -->
+                <div class="glass-panel rounded-2xl p-6">
+                    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <i data-lucide="gauge" class="text-cyan-400 w-5 h-5"></i> 詳細気象データ
+                    </h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-slate-800/50 rounded-lg p-3">
+                            <div class="text-xs text-slate-400 mb-1">風速・風向</div>
+                            <div class="text-xl font-bold" id="wind-speed">-- m/s</div>
+                            <div class="text-sm text-slate-300" id="wind-direction">--</div>
+                        </div>
+                        <div class="bg-slate-800/50 rounded-lg p-3">
+                            <div class="text-xs text-slate-400 mb-1">気圧</div>
+                            <div class="text-xl font-bold" id="pressure">-- hPa</div>
+                        </div>
+                        <div class="bg-slate-800/50 rounded-lg p-3">
+                            <div class="text-xs text-slate-400 mb-1">露点温度</div>
+                            <div class="text-xl font-bold" id="dewpoint">--°C</div>
+                            <div class="text-xs text-slate-400" id="condensation-risk">--</div>
+                        </div>
+                        <div class="bg-slate-800/50 rounded-lg p-3">
+                            <div class="text-xs text-slate-400 mb-1">視程</div>
+                            <div class="text-xl font-bold" id="visibility">-- km</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 天文薄明・日月出没時刻 -->
+                <div class="glass-panel rounded-2xl p-6">
+                    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <i data-lucide="sunrise" class="text-orange-400 w-5 h-5"></i> 天文薄明・出没時刻
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-slate-300">天文薄明開始</span>
+                            <span class="font-mono font-bold" id="twilight-astro-begin">--:--</span>
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-slate-300">日の出</span>
+                            <span class="font-mono font-bold" id="sunrise-time">--:--</span>
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-slate-300">日の入</span>
+                            <span class="font-mono font-bold" id="sunset-time">--:--</span>
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-slate-300">天文薄明終了</span>
+                            <span class="font-mono font-bold text-green-300" id="twilight-astro-end">--:--</span>
+                        </div>
+                        <div class="border-t border-slate-700 pt-3 mt-3">
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-slate-300">月の出</span>
+                                <span class="font-mono font-bold" id="moonrise-time">--:--</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm mt-2">
+                                <span class="text-slate-300">月の入</span>
+                                <span class="font-mono font-bold" id="moonset-time">--:--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 24時間タイムライン -->
+            <div class="glass-panel rounded-2xl p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <i data-lucide="clock" class="text-purple-400 w-5 h-5"></i> 24時間観測適性タイムライン
+                </h3>
+                <div id="timeline-container" class="timeline-bar"></div>
+                <div class="flex items-center justify-between mt-3 text-xs text-slate-400">
+                    <span>00:00</span>
+                    <span>06:00</span>
+                    <span>12:00</span>
+                    <span>18:00</span>
+                    <span>24:00</span>
+                </div>
+                <div class="flex items-center gap-4 mt-3 text-xs flex-wrap">
+                    <div class="flex items-center gap-1">
+                        <div class="w-4 h-4 bg-yellow-500/50 rounded"></div>
+                        <span>日中</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <div class="w-4 h-4 bg-blue-500/50 rounded"></div>
+                        <span>薄明</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <div class="w-4 h-4 bg-green-500/50 rounded"></div>
+                        <span>観測適時</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <div class="w-4 h-4 bg-slate-500/50 rounded"></div>
+                        <span>月明かり</span>
                     </div>
                 </div>
             </div>
@@ -232,6 +409,17 @@
                 </div>
             </div>
 
+            <!-- 観測適性レーダーチャート -->
+            <div class="glass-panel rounded-2xl p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <i data-lucide="radar" class="text-pink-400 w-5 h-5"></i> 観測適性レーダーチャート
+                </h3>
+                <div class="relative h-80 w-full">
+                    <canvas id="radarChart"></canvas>
+                </div>
+                <p class="text-xs text-slate-400 mt-2 text-center">各要素が外側に近いほど観測に適した条件です</p>
+            </div>
+
             <!-- チャートセクション -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- 気温チャート -->
@@ -303,10 +491,130 @@
         let weatherData = null;
         let tempChartInstance = null;
         let cloudChartInstance = null;
+        let radarChartInstance = null;
+        let favoriteLocations = JSON.parse(localStorage.getItem('favoriteLocations') || '[]');
 
         // デフォルト位置（三島市）
         let currentLat = 35.1167;
         let currentLon = 138.9167;
+
+        // --- ナイトビジョンモード ---
+        function toggleNightVision() {
+            document.body.classList.toggle('night-vision');
+            const isNight = document.body.classList.contains('night-vision');
+            localStorage.setItem('nightVisionMode', isNight);
+        }
+
+        // ページロード時にナイトビジョンモードを復元
+        if (localStorage.getItem('nightVisionMode') === 'true') {
+            document.body.classList.add('night-vision');
+        }
+
+        // --- お気に入り地点管理 ---
+        function addFavoriteLocation() {
+            const name = prompt('この地点の名前を入力してください:', document.getElementById('location-name').innerText || '未設定');
+            if (name) {
+                const location = {
+                    name: name,
+                    lat: currentLat,
+                    lon: currentLon
+                };
+                favoriteLocations.push(location);
+                if (favoriteLocations.length > 5) favoriteLocations.shift(); // 最大5件
+                localStorage.setItem('favoriteLocations', JSON.stringify(favoriteLocations));
+                renderFavoriteLocations();
+            }
+        }
+
+        function renderFavoriteLocations() {
+            const container = document.getElementById('favorite-locations');
+            if (favoriteLocations.length === 0) {
+                container.innerHTML = `
+                    <button onclick="addFavoriteLocation()" class="w-full bg-slate-800/50 hover:bg-slate-700/50 rounded-lg p-3 text-sm border border-slate-700 flex items-center justify-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        現在地をお気に入りに追加
+                    </button>
+                `;
+            } else {
+                container.innerHTML = favoriteLocations.map((loc, index) => `
+                    <div class="bg-slate-800/50 rounded-lg p-2 flex items-center justify-between border border-slate-700">
+                        <button onclick="loadFavoriteLocation(${index})" class="flex-1 text-left text-sm hover:text-blue-300">
+                            <i data-lucide="map-pin" class="w-3 h-3 inline mr-1"></i>
+                            ${loc.name}
+                        </button>
+                        <button onclick="removeFavoriteLocation(${index})" class="text-red-400 hover:text-red-300 text-xs">
+                            <i data-lucide="x" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                `).join('') + `
+                    <button onclick="addFavoriteLocation()" class="w-full bg-slate-800/50 hover:bg-slate-700/50 rounded-lg p-2 text-xs border border-slate-700 flex items-center justify-center gap-2">
+                        <i data-lucide="plus" class="w-3 h-3"></i>
+                        追加
+                    </button>
+                `;
+            }
+            lucide.createIcons();
+        }
+
+        function loadFavoriteLocation(index) {
+            const loc = favoriteLocations[index];
+            updateAppLocation(loc.lat, loc.lon);
+        }
+
+        function removeFavoriteLocation(index) {
+            favoriteLocations.splice(index, 1);
+            localStorage.setItem('favoriteLocations', JSON.stringify(favoriteLocations));
+            renderFavoriteLocations();
+        }
+
+        // --- 星空視認性スコア計算 ---
+        function calculateStarryScore(cloudCover, moonAge, humidity, visibility = 24, windSpeed = 5) {
+            // 雲量スコア (0-100) - 雲が少ないほど高い
+            const cloudScore = Math.max(0, 100 - cloudCover);
+
+            // 月明かりスコア (0-100) - 新月に近いほど高い
+            const moonScore = moonAge < 3 || moonAge > 26 ? 100 :
+                             moonAge < 10 || moonAge > 18 ? 60 : 20;
+
+            // 湿度スコア (0-100) - 湿度が低いほど高い
+            const humidityScore = Math.max(0, 100 - humidity);
+
+            // 視程スコア (0-100)
+            const visibilityScore = Math.min(100, (visibility / 50) * 100);
+
+            // 風速スコア (0-100) - 風が弱いほど高い
+            const windScore = windSpeed < 2 ? 100 : windSpeed < 5 ? 80 : windSpeed < 10 ? 50 : 20;
+
+            // 加重平均 (雲量と月明かりを重視)
+            const totalScore = (cloudScore * 0.4 + moonScore * 0.3 + humidityScore * 0.15 + visibilityScore * 0.1 + windScore * 0.05);
+
+            return Math.round(totalScore);
+        }
+
+        function updateStarryScore(score) {
+            const circle = document.getElementById('score-circle');
+            const text = document.getElementById('score-text');
+            const comment = document.getElementById('score-comment');
+
+            // スコアに応じた円の進行度 (0-100を0-440に変換)
+            const dashOffset = 440 - (score / 100) * 440;
+            circle.style.strokeDashoffset = dashOffset;
+
+            text.textContent = score;
+
+            // コメント
+            if (score >= 80) {
+                comment.textContent = '⭐ 絶好の観測日和！星空が最高に美しく見えるでしょう';
+            } else if (score >= 60) {
+                comment.textContent = '✨ 観測に適した条件です。良い星空が期待できます';
+            } else if (score >= 40) {
+                comment.textContent = '🌤️ まずまずの条件。明るい星は観測できます';
+            } else if (score >= 20) {
+                comment.textContent = '☁️ やや条件が悪いです。観測には忍耐が必要かも';
+            } else {
+                comment.textContent = '❌ 観測には不向きな条件です';
+            }
+        }
 
         // 時計更新
         setInterval(() => {
@@ -315,6 +623,8 @@
 
         // --- アプリケーション起動フロー ---
         window.addEventListener('load', () => {
+            // お気に入り地点を表示
+            renderFavoriteLocations();
             // 現在地取得を試みる
             getCurrentLocation(true); // true = 初回起動時の自動取得
         });
@@ -451,6 +761,65 @@
             mapInstance.panTo([lat, lon]);
         }
 
+        // --- ヘルパー関数 ---
+        function getWindDirection(degrees) {
+            const directions = ['北', '北北東', '北東', '東北東', '東', '東南東', '南東', '南南東', '南', '南南西', '南西', '西南西', '西', '西北西', '北西', '北北西'];
+            const index = Math.round(degrees / 22.5) % 16;
+            return directions[index];
+        }
+
+        // --- レーダーチャート描画 ---
+        function renderRadarChart(data) {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            if (radarChartInstance) radarChartInstance.destroy();
+
+            radarChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['雲の少なさ', '月の暗さ', '低湿度', '高視程', '風の穏やかさ'],
+                    datasets: [{
+                        label: '観測適性',
+                        data: [data.cloudClearness, data.moonDarkness, data.lowHumidity, data.goodVisibility, data.calmWind],
+                        backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                        borderColor: 'rgba(34, 197, 94, 1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(34, 197, 94, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(34, 197, 94, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                stepSize: 20,
+                                color: '#94a3b8'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            pointLabels: {
+                                color: '#cbd5e1',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
         // --- 流星群データ (年間イベント) ---
         const meteorShowers = [
             { name: "しぶんぎ座流星群", peakStart: "01-03", peakEnd: "01-04", rate: "120個/時", note: "年始の三大流星群" },
@@ -494,6 +863,115 @@
                 phaseName: phaseName,
                 icon: icon
             };
+        }
+
+        // --- 日の出入り・月の出入り・天文薄明計算 ---
+        function calculateSunMoonTimes(date, lat, lon) {
+            try {
+                const observer = new Astronomy.Observer(lat, lon, 0);
+
+                // 日の出・日の入り
+                const sunrise = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, 1, date, 1);
+                const sunset = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, -1, date, 1);
+
+                // 天文薄明 (-18度)
+                const astroTwilightMorning = Astronomy.SearchAltitude(Astronomy.Body.Sun, observer, -1, date, 1, -18);
+                const astroTwilightEvening = Astronomy.SearchAltitude(Astronomy.Body.Sun, observer, 1, date, 1, -18);
+
+                // 月の出・月の入り
+                const moonrise = Astronomy.SearchRiseSet(Astronomy.Body.Moon, observer, 1, date, 1);
+                const moonset = Astronomy.SearchRiseSet(Astronomy.Body.Moon, observer, -1, date, 1);
+
+                return {
+                    sunrise: sunrise ? moment(sunrise.date).format('HH:mm') : '--:--',
+                    sunset: sunset ? moment(sunset.date).format('HH:mm') : '--:--',
+                    astroTwilightBegin: astroTwilightMorning ? moment(astroTwilightMorning.date).format('HH:mm') : '--:--',
+                    astroTwilightEnd: astroTwilightEvening ? moment(astroTwilightEvening.date).format('HH:mm') : '--:--',
+                    moonrise: moonrise ? moment(moonrise.date).format('HH:mm') : '--:--',
+                    moonset: moonset ? moment(moonset.date).format('HH:mm') : '--:--',
+                    sunriseDate: sunrise ? sunrise.date : null,
+                    sunsetDate: sunset ? sunset.date : null,
+                    astroBeginDate: astroTwilightMorning ? astroTwilightMorning.date : null,
+                    astroEndDate: astroTwilightEvening ? astroTwilightEvening.date : null
+                };
+            } catch (error) {
+                console.error('日月時刻計算エラー:', error);
+                return {
+                    sunrise: '--:--',
+                    sunset: '--:--',
+                    astroTwilightBegin: '--:--',
+                    astroTwilightEnd: '--:--',
+                    moonrise: '--:--',
+                    moonset: '--:--'
+                };
+            }
+        }
+
+        function updateSunMoonDisplay(times) {
+            document.getElementById('sunrise-time').innerText = times.sunrise;
+            document.getElementById('sunset-time').innerText = times.sunset;
+            document.getElementById('twilight-astro-begin').innerText = times.astroTwilightBegin;
+            document.getElementById('twilight-astro-end').innerText = times.astroTwilightEnd;
+            document.getElementById('moonrise-time').innerText = times.moonrise;
+            document.getElementById('moonset-time').innerText = times.moonset;
+        }
+
+        // --- 24時間タイムライン描画 ---
+        function renderTimeline(times, targetDate) {
+            const container = document.getElementById('timeline-container');
+            container.innerHTML = '';
+
+            const dayStart = moment(targetDate).startOf('day');
+            const dayEnd = moment(targetDate).endOf('day');
+
+            // セグメントを追加
+            const segments = [];
+
+            // 日中（日の出～日の入り）
+            if (times.sunriseDate && times.sunsetDate) {
+                const sunriseTime = moment(times.sunriseDate);
+                const sunsetTime = moment(times.sunsetDate);
+
+                const start = ((sunriseTime - dayStart) / (dayEnd - dayStart)) * 100;
+                const width = ((sunsetTime - sunriseTime) / (dayEnd - dayStart)) * 100;
+
+                segments.push({ start, width, color: '#eab308', label: '日中' });
+            }
+
+            // 天文薄明
+            if (times.astroBeginDate && times.astroEndDate) {
+                const astroBegin = moment(times.astroBeginDate);
+                const astroEnd = moment(times.astroEndDate);
+
+                // 朝の薄明
+                const morningStart = ((astroBegin - dayStart) / (dayEnd - dayStart)) * 100;
+                const morningWidth = ((moment(times.sunriseDate) - astroBegin) / (dayEnd - dayStart)) * 100;
+                segments.push({ start: morningStart, width: morningWidth, color: '#3b82f6', label: '朝薄明' });
+
+                // 夕方の薄明
+                const eveningStart = ((moment(times.sunsetDate) - dayStart) / (dayEnd - dayStart)) * 100;
+                const eveningWidth = ((astroEnd - moment(times.sunsetDate)) / (dayEnd - dayStart)) * 100;
+                segments.push({ start: eveningStart, width: eveningWidth, color: '#3b82f6', label: '夕薄明' });
+
+                // 観測適時（天文薄明終了後～天文薄明開始前）
+                const observeStart = ((astroEnd - dayStart) / (dayEnd - dayStart)) * 100;
+                const observeEnd = ((astroBegin.clone().add(1, 'day') - dayStart) / (dayEnd - dayStart)) * 100;
+                const observeWidth = observeEnd - observeStart;
+                if (observeWidth > 0) {
+                    segments.push({ start: observeStart, width: observeWidth, color: '#22c55e', label: '観測適時' });
+                }
+            }
+
+            // セグメントを描画
+            segments.forEach(seg => {
+                const div = document.createElement('div');
+                div.className = 'timeline-segment';
+                div.style.left = `${seg.start}%`;
+                div.style.width = `${seg.width}%`;
+                div.style.background = seg.color;
+                div.title = seg.label;
+                container.appendChild(div);
+            });
         }
 
         // --- 天体イベント関数 ---
@@ -682,8 +1160,8 @@
         // --- 天気データ取得 & 描画 ---
 
         async function fetchWeather(lat, lon) {
-            // API URL (moonrise を削除して1.5.3の状態に戻す)
-            const API_URL = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,relative_humidity_2m,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max&timezone=Asia%2FTokyo&past_days=2&forecast_days=10`;
+            // API URL (追加気象データを含む)
+            const API_URL = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,relative_humidity_2m,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,windspeed_10m,winddirection_10m,surface_pressure,dewpoint_2m,visibility&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,sunrise,sunset&timezone=Asia%2FTokyo&past_days=2&forecast_days=10`;
 
             try {
                 const response = await fetch(API_URL);
@@ -816,6 +1294,48 @@
             calculateVisiblePlanets(targetDate, currentLat, currentLon);
             updateMeteorShowers(targetDate);
             updateRecommendedObjects(moonData.age);
+
+            // 追加気象データの表示
+            const currentWindSpeed = hourly.windspeed_10m ? hourly.windspeed_10m[currentIndex] : 0;
+            const currentWindDir = hourly.winddirection_10m ? hourly.winddirection_10m[currentIndex] : 0;
+            const currentPressure = hourly.surface_pressure ? hourly.surface_pressure[currentIndex] : 1013;
+            const currentDewpoint = hourly.dewpoint_2m ? hourly.dewpoint_2m[currentIndex] : 0;
+            const currentVisibility = hourly.visibility ? (hourly.visibility[currentIndex] / 1000).toFixed(1) : 24;
+            const currentHumidity = hourly.relative_humidity_2m[currentIndex];
+
+            document.getElementById('wind-speed').innerText = `${currentWindSpeed.toFixed(1)} m/s`;
+            const windDirText = getWindDirection(currentWindDir);
+            document.getElementById('wind-direction').innerText = windDirText;
+            document.getElementById('pressure').innerText = `${currentPressure.toFixed(0)} hPa`;
+            document.getElementById('dewpoint').innerText = `${currentDewpoint.toFixed(1)}°C`;
+            document.getElementById('visibility').innerText = `${currentVisibility} km`;
+
+            // 結露リスク判定
+            const tempDiff = currentTemp - currentDewpoint;
+            let condensationRisk = '';
+            if (tempDiff < 2) condensationRisk = '⚠️ 結露リスク高';
+            else if (tempDiff < 5) condensationRisk = '⚡ 結露注意';
+            else condensationRisk = '✅ 結露リスク低';
+            document.getElementById('condensation-risk').innerText = condensationRisk;
+
+            // 日月出没・天文薄明の計算と表示
+            const sunMoonTimes = calculateSunMoonTimes(targetDate, currentLat, currentLon);
+            updateSunMoonDisplay(sunMoonTimes);
+            renderTimeline(sunMoonTimes, targetDate);
+
+            // 星空視認性スコアの計算
+            const starryScore = calculateStarryScore(currentCloudTotal, moonData.age, currentHumidity, parseFloat(currentVisibility), currentWindSpeed);
+            updateStarryScore(starryScore);
+
+            // レーダーチャートのデータ準備
+            const radarData = {
+                cloudClearness: Math.max(0, 100 - currentCloudTotal),
+                moonDarkness: moonData.age < 3 || moonData.age > 26 ? 100 : moonData.age < 10 || moonData.age > 18 ? 60 : 20,
+                lowHumidity: Math.max(0, 100 - currentHumidity),
+                goodVisibility: Math.min(100, (parseFloat(currentVisibility) / 50) * 100),
+                calmWind: currentWindSpeed < 2 ? 100 : currentWindSpeed < 5 ? 80 : currentWindSpeed < 10 ? 50 : 20
+            };
+            renderRadarChart(radarData);
 
 
             // サマリーテキスト
