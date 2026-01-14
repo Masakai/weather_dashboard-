@@ -13,6 +13,8 @@
     <!-- Leaflet (Map) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Astronomy Engine for planetary calculations -->
+    <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
         body { font-family: 'Noto Sans JP', sans-serif; }
@@ -177,6 +179,59 @@
                 </div>
              </div>
 
+            <!-- 天体イベント情報セクション -->
+            <div class="glass-panel rounded-2xl p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <i data-lucide="star" class="text-yellow-400 w-5 h-5"></i> 天体イベント情報
+                </h3>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <!-- 今夜見える惑星 -->
+                    <div class="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                        <h4 class="font-semibold text-sm mb-3 flex items-center gap-2">
+                            <i data-lucide="planet" class="w-4 h-4 text-purple-400"></i>
+                            今夜見える惑星
+                        </h4>
+                        <div id="visible-planets" class="space-y-2 text-sm">
+                            <div class="text-slate-400">計算中...</div>
+                        </div>
+                    </div>
+
+                    <!-- 流星群カレンダー -->
+                    <div class="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                        <h4 class="font-semibold text-sm mb-3 flex items-center gap-2">
+                            <i data-lucide="zap" class="w-4 h-4 text-yellow-400"></i>
+                            流星群カレンダー
+                        </h4>
+                        <div id="meteor-showers" class="space-y-2 text-sm">
+                            <div class="text-slate-400">読み込み中...</div>
+                        </div>
+                    </div>
+
+                    <!-- ISS通過予報 -->
+                    <div class="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                        <h4 class="font-semibold text-sm mb-3 flex items-center gap-2">
+                            <i data-lucide="satellite" class="w-4 h-4 text-blue-400"></i>
+                            ISS通過予報
+                        </h4>
+                        <div id="iss-passes" class="space-y-2 text-sm">
+                            <div class="text-slate-400">取得中...</div>
+                        </div>
+                    </div>
+
+                    <!-- 月齢による観測推奨天体 -->
+                    <div class="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+                        <h4 class="font-semibold text-sm mb-3 flex items-center gap-2">
+                            <i data-lucide="telescope" class="w-4 h-4 text-green-400"></i>
+                            月齢による観測推奨天体
+                        </h4>
+                        <div id="recommended-objects" class="space-y-2 text-sm">
+                            <div class="text-slate-400">計算中...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- チャートセクション -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- 気温チャート -->
@@ -311,6 +366,9 @@
 
             // 4. 天気データ取得
             await fetchWeather(lat, lon);
+
+            // 5. ISS通過予報を取得（位置依存のため、ここで呼び出し）
+            await fetchISSPasses(lat, lon);
         }
 
         // 住所取得 (OpenStreetMap Nominatim API)
@@ -393,6 +451,18 @@
             mapInstance.panTo([lat, lon]);
         }
 
+        // --- 流星群データ (年間イベント) ---
+        const meteorShowers = [
+            { name: "しぶんぎ座流星群", peakStart: "01-03", peakEnd: "01-04", rate: "120個/時", note: "年始の三大流星群" },
+            { name: "こと座流星群", peakStart: "04-22", peakEnd: "04-23", rate: "18個/時", note: "安定した流星群" },
+            { name: "みずがめ座η流星群", peakStart: "05-06", peakEnd: "05-07", rate: "50個/時", note: "南半球で好条件" },
+            { name: "ペルセウス座流星群", peakStart: "08-12", peakEnd: "08-13", rate: "100個/時", note: "三大流星群の一つ" },
+            { name: "オリオン座流星群", peakStart: "10-21", peakEnd: "10-22", rate: "20個/時", note: "ハレー彗星起源" },
+            { name: "しし座流星群", peakStart: "11-17", peakEnd: "11-18", rate: "15個/時", note: "33年周期で大出現" },
+            { name: "ふたご座流星群", peakStart: "12-13", peakEnd: "12-14", rate: "120個/時", note: "三大流星群の一つ" },
+            { name: "こぐま座流星群", peakStart: "12-22", peakEnd: "12-23", rate: "10個/時", note: "安定した観測" }
+        ];
+
         // --- 月齢計算ロジック ---
         function calculateMoonData(date) {
             // 2000年1月6日 18:14 (UTC) は新月 (Lunation Number 953)
@@ -424,6 +494,189 @@
                 phaseName: phaseName,
                 icon: icon
             };
+        }
+
+        // --- 天体イベント関数 ---
+
+        // 1. 今夜見える惑星を計算
+        function calculateVisiblePlanets(observerDate, observerLat, observerLon) {
+            try {
+                const observer = new Astronomy.Observer(observerLat, observerLon, 0);
+                const planets = ['Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn'];
+                const planetNames = {
+                    'Mercury': '水星',
+                    'Venus': '金星',
+                    'Mars': '火星',
+                    'Jupiter': '木星',
+                    'Saturn': '土星'
+                };
+                const planetIcons = {
+                    'Mercury': '⚫',
+                    'Venus': '🌟',
+                    'Mars': '🔴',
+                    'Jupiter': '🟠',
+                    'Saturn': '🪐'
+                };
+
+                let visiblePlanets = [];
+
+                planets.forEach(planet => {
+                    const equator = Astronomy.Equator(planet, observerDate, observer, true, true);
+                    const horizon = Astronomy.Horizon(observerDate, observer, equator.ra, equator.dec, 'normal');
+                    const illumination = Astronomy.Illumination(planet, observerDate);
+
+                    // 地平線より上（高度 > 0）で、ある程度明るい天体のみ表示
+                    if (horizon.altitude > 0) {
+                        visiblePlanets.push({
+                            name: planetNames[planet],
+                            icon: planetIcons[planet],
+                            altitude: horizon.altitude.toFixed(1),
+                            azimuth: horizon.azimuth.toFixed(1),
+                            magnitude: illumination.mag.toFixed(1)
+                        });
+                    }
+                });
+
+                // HTMLに表示
+                const container = document.getElementById('visible-planets');
+                if (visiblePlanets.length === 0) {
+                    container.innerHTML = '<div class="text-slate-400">現在、地平線上に惑星はありません</div>';
+                } else {
+                    container.innerHTML = visiblePlanets.map(p => `
+                        <div class="flex items-center justify-between bg-slate-700/30 rounded-lg p-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-lg">${p.icon}</span>
+                                <span class="font-semibold">${p.name}</span>
+                            </div>
+                            <div class="text-xs text-slate-400">
+                                高度: ${p.altitude}° | 方位: ${p.azimuth}° | 等級: ${p.magnitude}
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('惑星計算エラー:', error);
+                document.getElementById('visible-planets').innerHTML = '<div class="text-red-400">計算エラー</div>';
+            }
+        }
+
+        // 2. 流星群カレンダーを更新
+        function updateMeteorShowers(targetDate) {
+            const currentYear = targetDate.getFullYear();
+            const currentMonth = String(targetDate.getMonth() + 1).padStart(2, '0');
+            const currentDay = String(targetDate.getDate()).padStart(2, '0');
+            const currentDateStr = `${currentMonth}-${currentDay}`;
+
+            // 前後30日以内の流星群をフィルタ
+            const relevantShowers = meteorShowers.filter(shower => {
+                const showerDate = new Date(`${currentYear}-${shower.peakStart}`);
+                const targetDateTime = targetDate.getTime();
+                const diffDays = Math.abs((showerDate - targetDateTime) / (1000 * 60 * 60 * 24));
+                return diffDays <= 30;
+            });
+
+            const container = document.getElementById('meteor-showers');
+            if (relevantShowers.length === 0) {
+                container.innerHTML = '<div class="text-slate-400">今後30日以内に極大を迎える流星群はありません</div>';
+            } else {
+                container.innerHTML = relevantShowers.map(shower => {
+                    const isPeak = currentDateStr === shower.peakStart || currentDateStr === shower.peakEnd;
+                    const showerDateStr = shower.peakStart.replace('-', '/');
+                    return `
+                        <div class="bg-slate-700/30 rounded-lg p-2 ${isPeak ? 'border-l-2 border-yellow-400' : ''}">
+                            <div class="flex items-center justify-between">
+                                <span class="font-semibold ${isPeak ? 'text-yellow-300' : ''}">${shower.name}</span>
+                                <span class="text-xs text-slate-400">${showerDateStr} 極大</span>
+                            </div>
+                            <div class="text-xs text-slate-400 mt-1">
+                                ${shower.rate} | ${shower.note}
+                            </div>
+                            ${isPeak ? '<div class="text-xs text-yellow-300 mt-1">🌟 本日が極大日です！</div>' : ''}
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // 3. ISS通過予報を取得
+        async function fetchISSPasses(lat, lon) {
+            const container = document.getElementById('iss-passes');
+            try {
+                // Open Notify API を使用
+                const response = await fetch(`https://api.open-notify.org/iss-pass.json?lat=${lat}&lon=${lon}&n=5`);
+                const data = await response.json();
+
+                if (data.response && data.response.length > 0) {
+                    container.innerHTML = data.response.slice(0, 3).map(pass => {
+                        const riseTime = moment.unix(pass.risetime);
+                        const duration = Math.floor(pass.duration / 60);
+                        return `
+                            <div class="bg-slate-700/30 rounded-lg p-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-semibold">${riseTime.format('M/D HH:mm')}</span>
+                                    <span class="text-xs text-blue-300">${duration}分間</span>
+                                </div>
+                                <div class="text-xs text-slate-400">
+                                    ${riseTime.fromNow()} | 通過時間: ${duration}分
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    container.innerHTML = '<div class="text-slate-400">近日中の通過予報はありません</div>';
+                }
+            } catch (error) {
+                console.error('ISS通過予報エラー:', error);
+                container.innerHTML = '<div class="text-slate-400">通過予報を取得できませんでした</div>';
+            }
+        }
+
+        // 4. 月齢による観測推奨天体
+        function updateRecommendedObjects(moonAge) {
+            const age = parseFloat(moonAge);
+            const container = document.getElementById('recommended-objects');
+
+            let recommendations = [];
+
+            if (age < 3 || age > 26) {
+                // 新月期: 暗い天体に最適
+                recommendations = [
+                    { name: 'アンドロメダ銀河 (M31)', type: '銀河', reason: '暗い夜空で見やすい' },
+                    { name: 'オリオン大星雲 (M42)', type: '星雲', reason: '新月期が最適' },
+                    { name: 'プレアデス星団 (M45)', type: '星団', reason: '暗い空で美しい' }
+                ];
+            } else if (age >= 3 && age < 10) {
+                // 上弦前後: 月面観測に適する
+                recommendations = [
+                    { name: '月面クレーター', type: '月', reason: '影が長く見やすい' },
+                    { name: '明るい惑星', type: '惑星', reason: '月明かりの影響少ない' },
+                    { name: '二重星（アルビレオ）', type: '恒星', reason: '明るい星なら観測可' }
+                ];
+            } else if (age >= 10 && age < 18) {
+                // 満月期: 月面観測メイン
+                recommendations = [
+                    { name: '満月の地形観測', type: '月', reason: '全体像を観測' },
+                    { name: '明るい星雲 (M42)', type: '星雲', reason: '明るい天体のみ' },
+                    { name: '惑星の衛星', type: '惑星', reason: '木星の衛星など' }
+                ];
+            } else {
+                // 下弦前後: 朝方の観測
+                recommendations = [
+                    { name: '月面南部クレーター', type: '月', reason: '下弦は南部が見やすい' },
+                    { name: '明け方の惑星', type: '惑星', reason: '水星・金星が好条件' },
+                    { name: '球状星団 (M13)', type: '星団', reason: '明け方なら観測可' }
+                ];
+            }
+
+            container.innerHTML = recommendations.map(rec => `
+                <div class="bg-slate-700/30 rounded-lg p-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-semibold">${rec.name}</span>
+                        <span class="text-xs bg-green-600/30 text-green-300 px-2 py-0.5 rounded">${rec.type}</span>
+                    </div>
+                    <div class="text-xs text-slate-400 mt-1">${rec.reason}</div>
+                </div>
+            `).join('');
         }
 
         // --- 天気データ取得 & 描画 ---
@@ -558,6 +811,11 @@
             document.getElementById('current-moon-icon').innerText = moonData.icon;
             document.getElementById('current-moon-age-text').innerText = moonData.age;
             document.getElementById('current-moon-name').innerText = moonData.phaseName;
+
+            // 天体イベント情報を更新
+            calculateVisiblePlanets(targetDate, currentLat, currentLon);
+            updateMeteorShowers(targetDate);
+            updateRecommendedObjects(moonData.age);
 
 
             // サマリーテキスト
