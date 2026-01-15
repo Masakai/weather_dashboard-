@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2026-01-15
+
+### Added
+- ISS星座図（天球図）表示機能をポップアップで追加
+- ISSの赤経・赤緯座標を高精度計算
+- 主要な恒星16個と惑星5個を星座図に表示
+- Canvasによる美麗な天球座標グラフ描画
+- 赤経・赤緯のグリッド線表示（天の赤道を強調）
+- ISSパネルに「星座図を表示」ボタンを追加
+
+### Improved
+- ECI座標系から赤経・赤緯を正確に計算
+- astronomy-engineで恒星と惑星の座標を計算
+- リアルタイムでISSの天球上の位置を視覚化
+
+## [2.4.0] - 2026-01-15
+
+### Added
+- 天の川視認性予測機能を追加
+- 銀河中心（いて座A*）の位置計算（高度・方位）
+- 月明かりの影響評価（月齢・月の高度・銀河中心との角距離）
+- 雲量を考慮した総合視認性スコア（0-100点）
+- 5段階評価（絶好/良好/やや不良/不良/視認不可）
+- 天の川撮影に適した露出設定のアドバイス表示
+
+### Improved
+- astronomy-engineライブラリを活用した高精度な銀河中心位置計算
+- 球面三角法による月と銀河中心の角距離計算
+- 観測条件に応じた具体的な撮影アドバイスを提供
+
 ## [2.3.9] - 2026-01-15
 
 ### Added
