@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>天体観測できるかな？</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/locale/ja.js"></script>
     <!-- Lucide Icons -->
@@ -15,6 +15,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Astronomy Engine for planetary calculations -->
     <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/satellite.js/5.0.0/satellite.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
         body { font-family: 'Noto Sans JP', sans-serif; }
@@ -363,6 +364,32 @@
                 </h3>
 
                 <div class="space-y-3">
+                    <!-- 国際宇宙ステーション (ISS) -->
+                    <div class="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
+                        <button onclick="toggleAccordion('iss')" class="w-full p-4 flex items-center justify-between hover:bg-slate-700/30 transition">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="satellite" class="w-4 h-4 text-blue-400"></i>
+                                <span class="font-semibold text-sm">国際宇宙ステーション (ISS)</span>
+                            </div>
+                            <i id="icon-iss" data-lucide="chevron-down" class="w-4 h-4 transition-transform"></i>
+                        </button>
+                        <div id="content-iss" class="hidden px-4 pb-4">
+                            <div id="iss-info" class="space-y-2 text-sm">
+                                <div class="text-slate-400">計算中...</div>
+                            </div>
+                            <!-- ISS可視予報 -->
+                            <div id="iss-prediction" class="mt-3 pt-3 border-t border-slate-700 space-y-2 text-sm hidden">
+                                <div class="flex items-center gap-2 text-yellow-400">
+                                    <i data-lucide="eye" class="w-4 h-4"></i>
+                                    <span class="font-bold">可視予報</span>
+                                </div>
+                                <div id="iss-prediction-content" class="bg-blue-900/30 rounded-lg p-2 text-xs text-blue-200">
+                                    条件を確認中...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 今夜見える惑星 -->
                     <div class="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
                         <button onclick="toggleAccordion('planets')" class="w-full p-4 flex items-center justify-between hover:bg-slate-700/30 transition">
@@ -754,6 +781,7 @@
 
         function initMap() {
             // 地図初期化
+            if (mapInstance) return;
             mapInstance = L.map('map').setView([currentLat, currentLon], 13);
 
             // OpenStreetMapタイル
@@ -993,6 +1021,184 @@
         }
 
         // --- 天体イベント関数 ---
+
+        // 0. ISS情報の取得と計算
+        let issTLE = null;
+        let issMarker = null;
+        let issInterval = null;
+
+        async function updateISSInfo(observerDate, observerLat, observerLon) {
+            const container = document.getElementById('iss-info');
+            
+            // リアルタイム更新用のインターバル設定
+            if (issInterval) clearInterval(issInterval);
+            issInterval = setInterval(() => {
+                const now = new Date();
+                calculateAndDisplayISS(now, observerLat, observerLon);
+            }, 3000); // 3秒ごとに更新
+
+            // 初回計算
+            await calculateAndDisplayISS(observerDate, observerLat, observerLon);
+        }
+
+        async function calculateAndDisplayISS(date, observerLat, observerLon) {
+            const container = document.getElementById('iss-info');
+            try {
+                if (!issTLE) {
+                    // CelesTrakからISSのTLEを取得
+                    try {
+                        const response = await fetch('https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle&NAME=ISS');
+                        if (response.ok) {
+                            const text = await response.text();
+                            const lines = text.split('\n');
+                            for (let i = 0; i < lines.length; i++) {
+                                if (lines[i].includes('ISS (ZARYA)')) {
+                                    issTLE = {
+                                        line1: lines[i+1].trim(),
+                                        line2: lines[i+2].trim()
+                                    };
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('TLEの取得に失敗しました。予備データを使用します。', e);
+                    }
+
+                    if (!issTLE) {
+                        issTLE = {
+                            line1: "1 25544U 98067A   25014.54922454  .00015647  00000-0  27838-3 0  9990",
+                            line2: "2 25544  51.6391 350.3705 0005239  55.5135  47.8824 15.49528481491593"
+                        };
+                    }
+                }
+
+                const satrec = satellite.twoline2satrec(issTLE.line1, issTLE.line2);
+                const positionAndVelocity = satellite.propagate(satrec, date);
+                const positionEci = positionAndVelocity.position;
+                const gmst = satellite.gstime(date);
+                const positionGd = satellite.eciToGeodetic(positionEci, gmst);
+
+                const longitude = satellite.degreesLong(positionGd.longitude);
+                const latitude = satellite.degreesLat(positionGd.latitude);
+                const height = positionGd.height;
+
+                const observerGd = {
+                    longitude: satellite.degreesToRadians(observerLon),
+                    latitude: satellite.degreesToRadians(observerLat),
+                    height: 0
+                };
+                const lookAngles = satellite.ecfToLookAngles(observerGd, satellite.eciToEcf(positionEci, gmst));
+                
+                const azimuth = satellite.radiansToDegrees(lookAngles.azimuth);
+                const elevation = satellite.radiansToDegrees(lookAngles.elevation);
+                const range = lookAngles.rangeSat;
+
+                const isVisible = elevation > 0;
+
+                // --- 可視予報のロジック ---
+                const predictionPanel = document.getElementById('iss-prediction');
+                const predictionContent = document.getElementById('iss-prediction-content');
+                
+                // 1. 半径1300km以内（地上距離）
+                // ハーバーサイン公式で計算
+                const R = 6371; // 地球の半径 km
+                const dLat = (latitude - observerLat) * Math.PI / 180;
+                const dLon = (longitude - observerLon) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                          Math.cos(observerLat * Math.PI / 180) * Math.cos(latitude * Math.PI / 180) * 
+                          Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                const groundDistance = R * c;
+
+                // 2. 日没後2H以内か日の出前2H以内
+                const sunTimes = calculateSunMoonTimes(date, observerLat, observerLon);
+                let isSunCondition = false;
+                if (sunTimes.sunsetDate && sunTimes.sunriseDate) {
+                    const sunset = moment(sunTimes.sunsetDate);
+                    const sunrise = moment(sunTimes.sunriseDate);
+                    const nowMoment = moment(date);
+                    
+                    const diffAfterSunset = nowMoment.diff(sunset, 'hours', true);
+                    const diffBeforeSunrise = sunrise.diff(nowMoment, 'hours', true);
+                    
+                    if ((diffAfterSunset >= 0 && diffAfterSunset <= 2) || (diffBeforeSunrise >= 0 && diffBeforeSunrise <= 2)) {
+                        isSunCondition = true;
+                    }
+                }
+
+                // 3. 仰角20度以上
+                const isElevationCondition = elevation >= 20;
+
+                if (groundDistance <= 1300 && isSunCondition && isElevationCondition) {
+                    predictionPanel.classList.remove('hidden');
+                    predictionContent.innerHTML = `
+                        <div class="font-bold text-yellow-300">現在、ISSが観測可能な条件を満たしています！</div>
+                        <div class="mt-1">
+                            距離: ${groundDistance.toFixed(0)} km (1300km以内)<br>
+                            仰角: ${elevation.toFixed(1)}° (20°以上)<br>
+                            時間: ${isSunCondition ? '日出前/日没後の好条件' : ''}
+                        </div>
+                    `;
+                } else {
+                    predictionPanel.classList.add('hidden');
+                }
+
+                container.innerHTML = `
+                    <div class="bg-slate-700/30 rounded-lg p-3 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-blue-300 font-bold">現在位置</span>
+                            <span class="text-xs px-2 py-0.5 rounded ${isVisible ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'}">
+                                ${isVisible ? '地平線上' : '地平線下'}
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div>緯度: <span class="text-white font-mono">${latitude.toFixed(2)}°</span></div>
+                            <div>経度: <span class="text-white font-mono">${longitude.toFixed(2)}°</span></div>
+                            <div>高度: <span class="text-white font-mono">${height.toFixed(1)} km</span></div>
+                            <div>距離: <span class="text-white font-mono">${range.toFixed(0)} km</span></div>
+                        </div>
+                        <div class="pt-2 border-t border-slate-600">
+                            <div class="flex justify-between text-xs">
+                                <span>方位角: <span class="text-white font-mono">${azimuth.toFixed(1)}°</span></span>
+                                <span>仰角: <span class="text-white font-mono">${elevation.toFixed(1)}°</span></span>
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-1">
+                                地上距離: <span class="text-white font-mono">${groundDistance.toFixed(0)} km</span>
+                            </div>
+                        </div>
+                        <div class="text-[10px] text-slate-500 mt-1 flex justify-between">
+                            <span>TLE Source: CelesTrak</span>
+                            <span>Real-time Update</span>
+                        </div>
+                    </div>
+                `;
+
+                if (document.getElementById('map')) {
+                    if (!mapInstance) {
+                        initMap();
+                    }
+                    if (mapInstance) {
+                        if (issMarker) {
+                            issMarker.setLatLng([latitude, longitude]);
+                        } else {
+                            const issIcon = L.divIcon({
+                                html: '<i data-lucide="satellite" class="text-blue-400 w-6 h-6"></i>',
+                                className: 'iss-map-icon',
+                                iconSize: [24, 24],
+                                iconAnchor: [12, 12]
+                            });
+                            issMarker = L.marker([latitude, longitude], {icon: issIcon}).addTo(mapInstance);
+                            issMarker.bindPopup("ISS (国際宇宙ステーション)");
+                            lucide.createIcons();
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('ISS計算エラー:', error);
+                container.innerHTML = '<div class="text-red-400">ISS情報の計算に失敗しました</div>';
+            }
+        }
 
         // 1. 今夜見える惑星を計算
         function calculateVisiblePlanets(observerDate, observerLat, observerLon) {
@@ -1276,6 +1482,7 @@
             document.getElementById('current-moon-name').innerText = moonData.phaseName;
 
             // 天体イベント情報を更新
+            updateISSInfo(targetDate, currentLat, currentLon);
             calculateVisiblePlanets(targetDate, currentLat, currentLon);
             updateMeteorShowers(targetDate);
             updateRecommendedObjects(moonData.age);
