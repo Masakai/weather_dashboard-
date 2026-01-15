@@ -136,10 +136,12 @@
                 <span class="font-bold">表示日時を指定:</span>
             </div>
             <div class="flex items-center gap-3 w-full sm:w-auto">
-                <input type="datetime-local" id="target-datetime" 
+                <input type="datetime-local" id="target-datetime"
                     class="bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-400 w-full sm:w-auto font-mono"
-                    onchange="updateDashboardTime()">
-                
+                    step="900"
+                    onchange="updateDashboardTime()"
+                    title="日付と時刻を選択してください">
+
                 <button onclick="resetToNow()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap">
                     現在に戻す
                 </button>
