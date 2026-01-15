@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.4] - 2026-01-15
+
+### Changed
+- 観測期間を固定時間帯（20:00-04:00）から実際の日没～翌日の日の出までに変更
+- 星空視認性スコアを日没から日の出までの平均雲量で計算するように改善
+- レーダーチャートの雲晴れ度も実際の観測可能時間に基づいて表示
+- 天体観測予報の時間帯別評価を、観測期間を4等分した動的な時間帯で表示
+- 天体観測予報に観測期間（日没～日の出の時刻）を明示
+
+### Improved
+- 季節や緯度によって異なる観測可能時間に対応し、より実態に即した評価を実現
+- 夏至（日没が遅く日の出が早い）と冬至（日没が早く日の出が遅い）で適切に評価が変化
+
 ## [2.3.3] - 2026-01-15
 
 ### Changed
