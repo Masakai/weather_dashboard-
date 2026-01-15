@@ -106,7 +106,7 @@
                 <div id="current-clock" class="text-xl font-semibold font-mono">--:--:--</div>
                 <div class="text-slate-400 text-sm">現在時刻 (Asia/Tokyo)</div>
                 <div class="text-slate-500 text-xs mt-2 flex items-center gap-2">
-                    Ver. 2.2.0
+                    Ver. 2.2.1
                     <button onclick="toggleNightVision()" class="text-xs bg-red-900/30 hover:bg-red-800/50 px-2 py-1 rounded border border-red-600/30" title="ナイトビジョンモード">
                         <i data-lucide="moon" class="w-3 h-3 inline"></i>
                     </button>
@@ -391,38 +391,6 @@
                         <div id="content-meteors" class="hidden px-4 pb-4">
                             <div id="meteor-showers" class="space-y-2 text-sm">
                                 <div class="text-slate-400">読み込み中...</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ISS現在位置 -->
-                    <div class="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
-                        <button onclick="toggleAccordion('iss-location-acc')" class="w-full p-4 flex items-center justify-between hover:bg-slate-700/30 transition">
-                            <div class="flex items-center gap-2">
-                                <i data-lucide="satellite" class="w-4 h-4 text-blue-400"></i>
-                                <span class="font-semibold text-sm">ISS現在位置</span>
-                            </div>
-                            <i id="icon-iss-location-acc" data-lucide="chevron-down" class="w-4 h-4 transition-transform"></i>
-                        </button>
-                        <div id="content-iss-location-acc" class="hidden px-4 pb-4">
-                            <div id="iss-location" class="space-y-2 text-sm">
-                                <div class="text-slate-400">取得中...</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ISS乗員情報 -->
-                    <div class="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
-                        <button onclick="toggleAccordion('astronauts')" class="w-full p-4 flex items-center justify-between hover:bg-slate-700/30 transition">
-                            <div class="flex items-center gap-2">
-                                <i data-lucide="users" class="w-4 h-4 text-purple-400"></i>
-                                <span class="font-semibold text-sm">ISS乗員情報</span>
-                            </div>
-                            <i id="icon-astronauts" data-lucide="chevron-down" class="w-4 h-4 transition-transform"></i>
-                        </button>
-                        <div id="content-astronauts" class="hidden px-4 pb-4">
-                            <div id="iss-astronauts" class="space-y-2 text-sm">
-                                <div class="text-slate-400">取得中...</div>
                             </div>
                         </div>
                     </div>
@@ -729,12 +697,6 @@
 
             // 4. 天気データ取得
             await fetchWeather(lat, lon);
-
-            // 5. ISS現在位置を取得
-            await fetchISSLocation();
-
-            // 6. ISS乗員情報を取得
-            await fetchAstronauts();
         }
 
         // 住所取得 (OpenStreetMap Nominatim API)
@@ -1132,104 +1094,7 @@
             }
         }
 
-        // 3. ISS現在位置を取得
-        async function fetchISSLocation() {
-            const container = document.getElementById('iss-location');
-            try {
-                // Open Notify API の /iss-now.json エンドポイントを使用
-                const response = await fetch('http://api.open-notify.org/iss-now.json');
-                const data = await response.json();
-
-                if (data.iss_position) {
-                    const lat = parseFloat(data.iss_position.latitude);
-                    const lon = parseFloat(data.iss_position.longitude);
-                    const timestamp = moment.unix(data.timestamp);
-
-                    container.innerHTML = `
-                        <div class="bg-blue-500/20 rounded-lg p-3 border border-blue-400/30">
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-slate-300 text-xs">リアルタイム位置</span>
-                                <span class="text-xs text-blue-300">${timestamp.format('HH:mm:ss')}</span>
-                            </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div class="bg-slate-700/30 rounded-lg p-2">
-                                    <div class="text-xs text-slate-400">緯度</div>
-                                    <div class="font-semibold text-slate-200">${lat.toFixed(4)}°</div>
-                                </div>
-                                <div class="bg-slate-700/30 rounded-lg p-2">
-                                    <div class="text-xs text-slate-400">経度</div>
-                                    <div class="font-semibold text-slate-200">${lon.toFixed(4)}°</div>
-                                </div>
-                            </div>
-                            <div class="text-xs text-slate-400 mt-2">
-                                高度: 約 408km | 速度: 約 27,600km/h
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    container.innerHTML = '<div class="text-slate-400">位置情報を取得できませんでした</div>';
-                }
-            } catch (error) {
-                console.error('ISS位置情報エラー:', error);
-                container.innerHTML = '<div class="text-slate-400">位置情報を取得できませんでした</div>';
-            }
-        }
-
-        // 3-2. ISS乗員情報を取得
-        async function fetchAstronauts() {
-            const container = document.getElementById('iss-astronauts');
-            try {
-                // Open Notify API の /astros.json エンドポイントを使用
-                const response = await fetch('https://api.open-notify.org/astros.json');
-                const data = await response.json();
-
-                if (data.people && data.people.length > 0) {
-                    // ISSにいる宇宙飛行士のみフィルタ
-                    const issCrewMembers = data.people.filter(person => person.craft === 'ISS');
-
-                    if (issCrewMembers.length > 0) {
-                        // 人数表示
-                        const countHtml = `
-                            <div class="bg-purple-500/20 rounded-lg p-3 mb-3 border border-purple-400/30">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-slate-300">現在のISS滞在人数</span>
-                                    <span class="text-2xl font-bold text-purple-300">${issCrewMembers.length}名</span>
-                                </div>
-                            </div>
-                        `;
-
-                        // 乗員リスト
-                        const crewListHtml = issCrewMembers.map(person => {
-                            return `
-                                <div class="bg-slate-700/30 rounded-lg p-2 flex items-center gap-2">
-                                    <i data-lucide="user" class="w-4 h-4 text-purple-300"></i>
-                                    <div class="flex-1">
-                                        <div class="font-semibold text-slate-200">${person.name}</div>
-                                        <div class="text-xs text-slate-400">所属: ${person.craft}</div>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('');
-
-                        container.innerHTML = countHtml + crewListHtml;
-
-                        // Lucide icons を再初期化
-                        if (window.lucide) {
-                            lucide.createIcons();
-                        }
-                    } else {
-                        container.innerHTML = '<div class="text-slate-400">現在ISSに滞在中の宇宙飛行士はいません</div>';
-                    }
-                } else {
-                    container.innerHTML = '<div class="text-slate-400">宇宙飛行士情報がありません</div>';
-                }
-            } catch (error) {
-                console.error('ISS乗員情報エラー:', error);
-                container.innerHTML = '<div class="text-slate-400">乗員情報を取得できませんでした</div>';
-            }
-        }
-
-        // 4. 月齢による観測推奨天体
+        // 3. 月齢による観測推奨天体
         function updateRecommendedObjects(moonAge) {
             const age = parseFloat(moonAge);
             const container = document.getElementById('recommended-objects');
