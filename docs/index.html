@@ -107,7 +107,7 @@
                 <div id="current-clock" class="text-xl font-semibold font-mono">--:--:--</div>
                 <div class="text-slate-400 text-sm">現在時刻 (Asia/Tokyo)</div>
                 <div class="text-slate-500 text-xs mt-2 flex items-center gap-2">
-                    Ver. 2.3.9
+                    Ver. 2.4.0
                     <button onclick="toggleNightVision()" class="text-xs bg-red-900/30 hover:bg-red-800/50 px-2 py-1 rounded border border-red-600/30" title="ナイトビジョンモード">
                         <i data-lucide="moon" class="w-3 h-3 inline"></i>
                     </button>
@@ -404,6 +404,22 @@
                                 <div id="iss-prediction-content" class="bg-blue-900/30 rounded-lg p-2 text-xs text-blue-200">
                                     条件を確認中...
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 天の川視認性予測 -->
+                    <div class="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
+                        <button onclick="toggleAccordion('milkyway')" class="w-full p-4 flex items-center justify-between hover:bg-slate-700/30 transition">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="sparkles" class="w-4 h-4 text-indigo-400"></i>
+                                <span class="font-semibold text-sm">天の川視認性予測</span>
+                            </div>
+                            <i id="icon-milkyway" data-lucide="chevron-down" class="w-4 h-4 transition-transform"></i>
+                        </button>
+                        <div id="content-milkyway" class="hidden px-4 pb-4">
+                            <div id="milkyway-visibility" class="space-y-2 text-sm">
+                                <div class="text-slate-400">計算中...</div>
                             </div>
                         </div>
                     </div>
@@ -1295,6 +1311,190 @@
             }
         }
 
+        // 1-2. 天の川視認性を計算
+        function calculateMilkyWayVisibility(observerDate, observerLat, observerLon, moonData, cloudCover) {
+            try {
+                const observer = new Astronomy.Observer(observerLat, observerLon, 0);
+
+                // 銀河中心の座標（いて座A*）
+                // 赤経: 17h 45m 40s = 266.4167度、赤緯: -29° 00' 28" = -29.0078度
+                const galacticCenterRA = 17 + 45/60 + 40/3600;  // 時間単位
+                const galacticCenterDec = -(29 + 0/60 + 28/3600);  // 度単位
+
+                // 銀河中心の地平座標を計算
+                const gcHorizon = Astronomy.Horizon(observerDate, observer, galacticCenterRA, galacticCenterDec, 'normal');
+
+                // 月の位置を取得
+                const moonEquator = Astronomy.Equator('Moon', observerDate, observer, true, true);
+                const moonHorizon = Astronomy.Horizon(observerDate, observer, moonEquator.ra, moonEquator.dec, 'normal');
+
+                // 月と銀河中心の角距離を計算（球面三角法）
+                const raRad1 = galacticCenterRA * Math.PI / 12;  // 時間を弧度に変換
+                const decRad1 = galacticCenterDec * Math.PI / 180;
+                const raRad2 = moonEquator.ra * Math.PI / 12;
+                const decRad2 = moonEquator.dec * Math.PI / 180;
+
+                const angularDistance = Math.acos(
+                    Math.sin(decRad1) * Math.sin(decRad2) +
+                    Math.cos(decRad1) * Math.cos(decRad2) * Math.cos(raRad1 - raRad2)
+                ) * 180 / Math.PI;
+
+                // 視認性スコアを計算（0-100）
+                let visibilityScore = 100;
+
+                // 1. 銀河中心の高度による減点（地平線に近いほど見えにくい）
+                if (gcHorizon.altitude < 0) {
+                    visibilityScore = 0;  // 地平線下は見えない
+                } else if (gcHorizon.altitude < 20) {
+                    visibilityScore -= (20 - gcHorizon.altitude) * 2;  // 低高度は大気減光で見えにくい
+                }
+
+                // 2. 月明かりの影響
+                const moonIllumination = Astronomy.Illumination('Moon', observerDate);
+                const moonPhase = moonIllumination.phase_fraction * 100;
+
+                if (moonHorizon.altitude > 0) {  // 月が地平線上にある場合
+                    // 月齢による減点
+                    const moonPenalty = moonPhase * 0.3;  // 満月で最大30点減点
+
+                    // 角距離による影響（近いほど影響大）
+                    let distanceFactor = 1.0;
+                    if (angularDistance < 30) {
+                        distanceFactor = 2.0;  // 月が近い場合は影響2倍
+                    } else if (angularDistance < 60) {
+                        distanceFactor = 1.5;
+                    } else if (angularDistance < 90) {
+                        distanceFactor = 1.2;
+                    }
+
+                    visibilityScore -= moonPenalty * distanceFactor;
+                }
+
+                // 3. 雲量による減点
+                const cloudPenalty = cloudCover * 0.5;  // 雲量100%で50点減点
+                visibilityScore -= cloudPenalty;
+
+                // スコアを0-100の範囲に制限
+                visibilityScore = Math.max(0, Math.min(100, visibilityScore));
+
+                // 評価ランク
+                let rank, rankColor, rankIcon;
+                if (visibilityScore >= 80) {
+                    rank = '絶好';
+                    rankColor = 'text-yellow-300';
+                    rankIcon = '⭐⭐⭐';
+                } else if (visibilityScore >= 60) {
+                    rank = '良好';
+                    rankColor = 'text-green-300';
+                    rankIcon = '⭐⭐';
+                } else if (visibilityScore >= 40) {
+                    rank = 'やや不良';
+                    rankColor = 'text-blue-300';
+                    rankIcon = '⭐';
+                } else if (visibilityScore >= 20) {
+                    rank = '不良';
+                    rankColor = 'text-slate-400';
+                    rankIcon = '☁️';
+                } else {
+                    rank = '視認不可';
+                    rankColor = 'text-red-400';
+                    rankIcon = '❌';
+                }
+
+                // HTMLを生成
+                const container = document.getElementById('milkyway-visibility');
+
+                if (gcHorizon.altitude < 0) {
+                    container.innerHTML = `
+                        <div class="bg-slate-700/30 rounded-lg p-3">
+                            <div class="text-slate-400 text-center">
+                                <div class="text-lg mb-1">🌅</div>
+                                <div>銀河中心は地平線下です</div>
+                                <div class="text-xs mt-1">高度: ${gcHorizon.altitude.toFixed(1)}°</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // 方位を日本語に変換
+                    let direction = '';
+                    const az = gcHorizon.azimuth;
+                    if (az >= 337.5 || az < 22.5) direction = '北';
+                    else if (az >= 22.5 && az < 67.5) direction = '北東';
+                    else if (az >= 67.5 && az < 112.5) direction = '東';
+                    else if (az >= 112.5 && az < 157.5) direction = '南東';
+                    else if (az >= 157.5 && az < 202.5) direction = '南';
+                    else if (az >= 202.5 && az < 247.5) direction = '南西';
+                    else if (az >= 247.5 && az < 292.5) direction = '西';
+                    else direction = '北西';
+
+                    container.innerHTML = `
+                        <div class="bg-slate-700/30 rounded-lg p-3 space-y-3">
+                            <!-- 視認性スコア -->
+                            <div class="text-center">
+                                <div class="text-2xl font-bold ${rankColor} mb-1">
+                                    ${rankIcon} ${rank}
+                                </div>
+                                <div class="text-3xl font-bold text-white">
+                                    ${visibilityScore.toFixed(0)}点
+                                </div>
+                                <div class="text-xs text-slate-400 mt-1">天の川視認性スコア</div>
+                            </div>
+
+                            <!-- 銀河中心の位置 -->
+                            <div class="border-t border-slate-600 pt-2">
+                                <div class="text-xs text-slate-300 mb-1">🎯 銀河中心の位置（いて座A*）</div>
+                                <div class="grid grid-cols-2 gap-2 text-xs">
+                                    <div class="bg-slate-800/50 rounded p-2">
+                                        <div class="text-slate-400">高度</div>
+                                        <div class="text-white font-semibold">${gcHorizon.altitude.toFixed(1)}°</div>
+                                    </div>
+                                    <div class="bg-slate-800/50 rounded p-2">
+                                        <div class="text-slate-400">方位</div>
+                                        <div class="text-white font-semibold">${direction} ${gcHorizon.azimuth.toFixed(0)}°</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 月の影響 -->
+                            <div class="border-t border-slate-600 pt-2">
+                                <div class="text-xs text-slate-300 mb-1">🌙 月明かりの影響</div>
+                                <div class="text-xs space-y-1">
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">月齢:</span>
+                                        <span class="text-white">${moonData.age.toFixed(1)}日 (${moonPhase.toFixed(0)}%照)</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">月の高度:</span>
+                                        <span class="text-white">${moonHorizon.altitude.toFixed(1)}°</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">角距離:</span>
+                                        <span class="text-white">${angularDistance.toFixed(0)}°</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 観測アドバイス -->
+                            <div class="border-t border-slate-600 pt-2">
+                                <div class="text-xs text-slate-300 mb-1">💡 アドバイス</div>
+                                <div class="text-xs text-slate-400 leading-relaxed">
+                                    ${visibilityScore >= 80 ? '絶好の天の川撮影日和です！ISO3200、F2.8、15-25秒の露出がおすすめ。' :
+                                      visibilityScore >= 60 ? '天の川の撮影が可能です。月明かりに注意しながら撮影してください。' :
+                                      visibilityScore >= 40 ? '天の川の主要部分は見えますが、淡い部分は見えにくいかもしれません。' :
+                                      visibilityScore >= 20 ? '天の川の視認は困難です。月が沈むか、雲が晴れるのを待ちましょう。' :
+                                      '現在の条件では天の川の観測は難しいです。'}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+            } catch (error) {
+                console.error('天の川計算エラー:', error);
+                document.getElementById('milkyway-visibility').innerHTML = '<div class="text-red-400">計算エラー</div>';
+            }
+        }
+
         // 2. 流星群カレンダーを更新
         function updateMeteorShowers(targetDate) {
             const currentYear = targetDate.getFullYear();
@@ -1618,6 +1818,7 @@
             updateAstronomicalEvents(targetDate);
             updateISSInfo(targetDate, currentLat, currentLon);
             calculateVisiblePlanets(targetDate, currentLat, currentLon);
+            calculateMilkyWayVisibility(targetDate, currentLat, currentLon, moonData, currentCloudTotal);
             updateMeteorShowers(targetDate);
             updateRecommendedObjects(moonData.age);
 
