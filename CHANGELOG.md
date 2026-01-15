@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.8] - 2026-01-15
+
+### Changed
+- 雲量推移グラフを積み重ねグラフから個別線グラフに変更
+- 各層（下層・中層・上層）の雲量を独立した線として表示
+- Y軸の最大値を100%に固定し、パーセント表示を追加
+
+### Fixed
+- 雲量の積み重ねにより100%を超えてしまう問題を解決
+- 各層の雲量を正確に把握できるように改善
+
 ## [2.3.7] - 2026-01-15
 
 ### Changed
