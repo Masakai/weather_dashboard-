@@ -107,7 +107,7 @@
                 <div id="current-clock" class="text-xl font-semibold font-mono">--:--:--</div>
                 <div class="text-slate-400 text-sm">現在時刻 (Asia/Tokyo)</div>
                 <div class="text-slate-500 text-xs mt-2 flex items-center gap-2">
-                    Ver. 2.4.0
+                    Ver. 2.5.0
                     <button onclick="toggleNightVision()" class="text-xs bg-red-900/30 hover:bg-red-800/50 px-2 py-1 rounded border border-red-600/30" title="ナイトビジョンモード">
                         <i data-lucide="moon" class="w-3 h-3 inline"></i>
                     </button>
@@ -544,6 +544,38 @@
             </p>
         </footer>
 
+    </div>
+
+    <!-- ISS星座図モーダル -->
+    <div id="iss-skymap-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" onclick="closeISSSkymapModal(event)">
+        <div class="bg-slate-900 rounded-2xl p-6 max-w-4xl w-full mx-4 border border-slate-700" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold flex items-center gap-2">
+                    <i data-lucide="compass" class="w-6 h-6 text-blue-400"></i>
+                    ISS星座図
+                </h3>
+                <button onclick="closeISSSkymapModal()" class="text-slate-400 hover:text-white">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="space-y-3">
+                <div id="iss-skymap-info" class="text-sm text-slate-300 bg-slate-800/50 rounded-lg p-3"></div>
+                <div class="bg-black rounded-lg overflow-hidden border border-slate-700">
+                    <canvas id="iss-skymap-canvas" width="800" height="600" class="w-full"></canvas>
+                </div>
+                <div class="text-xs text-slate-400 space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-3 h-3 bg-red-500 rounded-full"></span>
+                        <span>ISS位置</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-2 h-2 bg-white rounded-full"></span>
+                        <span>1等星以上の明るい恒星</span>
+                    </div>
+                    <div>※ 赤経・赤緯座標で表示（観測地点からの見え方とは異なります）</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1220,8 +1252,15 @@
                             <span>TLE Source: CelesTrak</span>
                             <span>Real-time Update</span>
                         </div>
+                        <button onclick="openISSSkymapModal()" class="w-full mt-2 bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 py-2 px-3 rounded-lg text-xs font-semibold border border-blue-500/30 transition flex items-center justify-center gap-1">
+                            <i data-lucide="compass" class="w-3 h-3"></i>
+                            星座図を表示
+                        </button>
                     </div>
                 `;
+
+                // アイコンを再描画
+                lucide.createIcons();
 
                 if (document.getElementById('map')) {
                     if (!mapInstance) {
@@ -2179,6 +2218,253 @@
 
             document.getElementById('loading').classList.add('hidden');
             document.getElementById('dashboard-content').classList.remove('hidden');
+        }
+
+        // ISS星座図モーダル関連
+        function openISSSkymapModal() {
+            const modal = document.getElementById('iss-skymap-modal');
+            modal.classList.remove('hidden');
+            drawISSSkymapCanvas();
+            lucide.createIcons();
+        }
+
+        function closeISSSkymapModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            const modal = document.getElementById('iss-skymap-modal');
+            modal.classList.add('hidden');
+        }
+
+        function drawISSSkymapCanvas() {
+            const canvas = document.getElementById('iss-skymap-canvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+
+            // キャンバスをクリア
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, width, height);
+
+            try {
+                // ISSのTLEデータと観測地点が必要
+                if (!window.currentTLE || !currentLat || !currentLon) {
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.font = '16px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('ISS情報が取得できていません', width / 2, height / 2);
+                    return;
+                }
+
+                const targetDate = currentDatetime ? new Date(currentDatetime) : new Date();
+                const observer = new Astronomy.Observer(currentLat, currentLon, 0);
+
+                // ISSの位置を計算
+                const satrec = satellite.twoline2satrec(window.currentTLE.line1, window.currentTLE.line2);
+                const positionAndVelocity = satellite.propagate(satrec, targetDate);
+
+                if (positionAndVelocity.position && typeof positionAndVelocity.position !== 'boolean') {
+                    const positionEci = positionAndVelocity.position;
+                    const gmst = satellite.gstime(targetDate);
+                    const positionGd = satellite.eciToGeodetic(positionEci, gmst);
+
+                    // ISSの赤経・赤緯を計算（ECI座標から）
+                    const issX = positionEci.x;
+                    const issY = positionEci.y;
+                    const issZ = positionEci.z;
+
+                    const issDistance = Math.sqrt(issX * issX + issY * issY + issZ * issZ);
+                    const issDec = Math.asin(issZ / issDistance) * 180 / Math.PI;
+                    const issRA = Math.atan2(issY, issX) * 12 / Math.PI;  // 時間単位（0-24h）
+                    const issRANormalized = ((issRA % 24) + 24) % 24;
+
+                    // 主要な恒星リスト
+                    const brightStars = [
+                        { name: 'シリウス', body: 'Sirius' },
+                        { name: 'カノープス', body: 'Canopus' },
+                        { name: 'アークトゥルス', body: 'Arcturus' },
+                        { name: 'ベガ', body: 'Vega' },
+                        { name: 'カペラ', body: 'Capella' },
+                        { name: 'リゲル', body: 'Rigel' },
+                        { name: 'プロキオン', body: 'Procyon' },
+                        { name: 'ベテルギウス', body: 'Betelgeuse' },
+                        { name: 'アルタイル', body: 'Altair' },
+                        { name: 'アルデバラン', body: 'Aldebaran' },
+                        { name: 'スピカ', body: 'Spica' },
+                        { name: 'アンタレス', body: 'Antares' },
+                        { name: 'ポルックス', body: 'Pollux' },
+                        { name: 'フォーマルハウト', body: 'Fomalhaut' },
+                        { name: 'デネブ', body: 'Deneb' },
+                        { name: 'レグルス', body: 'Regulus' }
+                    ];
+
+                    // 恒星の座標を計算
+                    const stars = [];
+                    brightStars.forEach(star => {
+                        try {
+                            const equator = Astronomy.Equator(star.body, targetDate, observer, true, true);
+                            stars.push({
+                                name: star.name,
+                                ra: equator.ra,
+                                dec: equator.dec
+                            });
+                        } catch (e) {
+                            // 一部の星が計算できない場合はスキップ
+                        }
+                    });
+
+                    // 惑星も追加
+                    const planets = ['Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn'];
+                    const planetNames = { 'Mercury': '水星', 'Venus': '金星', 'Mars': '火星', 'Jupiter': '木星', 'Saturn': '土星' };
+                    planets.forEach(planet => {
+                        try {
+                            const equator = Astronomy.Equator(planet, targetDate, observer, true, true);
+                            stars.push({
+                                name: planetNames[planet],
+                                ra: equator.ra,
+                                dec: equator.dec,
+                                isPlanet: true
+                            });
+                        } catch (e) {
+                            // エラー時はスキップ
+                        }
+                    });
+
+                    // 座標変換関数（赤経・赤緯 → Canvas座標）
+                    function raDecToCanvas(ra, dec) {
+                        const x = (ra / 24) * width;
+                        const y = ((90 - dec) / 180) * height;
+                        return { x, y };
+                    }
+
+                    // グリッド線を描画
+                    ctx.strokeStyle = '#1e293b';
+                    ctx.lineWidth = 1;
+
+                    // 赤経のグリッド（0h, 6h, 12h, 18h）
+                    for (let h = 0; h <= 24; h += 6) {
+                        const x = (h / 24) * width;
+                        ctx.beginPath();
+                        ctx.moveTo(x, 0);
+                        ctx.lineTo(x, height);
+                        ctx.stroke();
+
+                        ctx.fillStyle = '#475569';
+                        ctx.font = '12px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(`${h}h`, x, height - 5);
+                    }
+
+                    // 赤緯のグリッド（-60°, -30°, 0°, +30°, +60°）
+                    for (let deg = -60; deg <= 60; deg += 30) {
+                        const y = ((90 - deg) / 180) * height;
+                        ctx.beginPath();
+                        ctx.moveTo(0, y);
+                        ctx.lineTo(width, y);
+                        ctx.stroke();
+
+                        ctx.fillStyle = '#475569';
+                        ctx.font = '12px sans-serif';
+                        ctx.textAlign = 'left';
+                        ctx.fillText(`${deg > 0 ? '+' : ''}${deg}°`, 5, y - 5);
+                    }
+
+                    // 天の赤道（0度）を強調
+                    const equatorY = ((90 - 0) / 180) * height;
+                    ctx.strokeStyle = '#334155';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, equatorY);
+                    ctx.lineTo(width, equatorY);
+                    ctx.stroke();
+
+                    // 恒星を描画
+                    stars.forEach(star => {
+                        const pos = raDecToCanvas(star.ra, star.dec);
+
+                        if (star.isPlanet) {
+                            // 惑星は黄色の小さい円
+                            ctx.fillStyle = '#fbbf24';
+                            ctx.beginPath();
+                            ctx.arc(pos.x, pos.y, 3, 0, 2 * Math.PI);
+                            ctx.fill();
+                        } else {
+                            // 恒星は白い点
+                            ctx.fillStyle = '#ffffff';
+                            ctx.beginPath();
+                            ctx.arc(pos.x, pos.y, 2, 0, 2 * Math.PI);
+                            ctx.fill();
+                        }
+
+                        // 星名を表示
+                        ctx.fillStyle = '#94a3b8';
+                        ctx.font = '10px sans-serif';
+                        ctx.textAlign = 'left';
+                        ctx.fillText(star.name, pos.x + 5, pos.y + 3);
+                    });
+
+                    // ISSの位置を描画（赤い大きな円）
+                    const issPos = raDecToCanvas(issRANormalized, issDec);
+
+                    // 外側の光輪
+                    const gradient = ctx.createRadialGradient(issPos.x, issPos.y, 0, issPos.x, issPos.y, 20);
+                    gradient.addColorStop(0, 'rgba(239, 68, 68, 0.6)');
+                    gradient.addColorStop(1, 'rgba(239, 68, 68, 0)');
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(issPos.x, issPos.y, 20, 0, 2 * Math.PI);
+                    ctx.fill();
+
+                    // ISS本体
+                    ctx.fillStyle = '#ef4444';
+                    ctx.beginPath();
+                    ctx.arc(issPos.x, issPos.y, 6, 0, 2 * Math.PI);
+                    ctx.fill();
+
+                    // ISS外周
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(issPos.x, issPos.y, 6, 0, 2 * Math.PI);
+                    ctx.stroke();
+
+                    // ISSラベル
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 14px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('ISS', issPos.x, issPos.y - 12);
+
+                    // 情報パネルを更新
+                    const infoDiv = document.getElementById('iss-skymap-info');
+                    infoDiv.innerHTML = `
+                        <div class="grid grid-cols-3 gap-4 text-xs">
+                            <div>
+                                <div class="text-slate-400">赤経 (RA)</div>
+                                <div class="text-white font-mono text-sm">${issRANormalized.toFixed(2)}h</div>
+                            </div>
+                            <div>
+                                <div class="text-slate-400">赤緯 (Dec)</div>
+                                <div class="text-white font-mono text-sm">${issDec.toFixed(2)}°</div>
+                            </div>
+                            <div>
+                                <div class="text-slate-400">計算時刻</div>
+                                <div class="text-white text-sm">${moment(targetDate).format('HH:mm:ss')}</div>
+                            </div>
+                        </div>
+                    `;
+
+                } else {
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.font = '16px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('ISSの位置計算に失敗しました', width / 2, height / 2);
+                }
+
+            } catch (error) {
+                console.error('星座図描画エラー:', error);
+                ctx.fillStyle = '#ef4444';
+                ctx.font = '16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('エラーが発生しました', width / 2, height / 2);
+            }
         }
     </script>
 </body>

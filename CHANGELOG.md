@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2026-01-15
+
+### Added
+- ISS星座図（天球図）表示機能をポップアップで追加
+- ISSの赤経・赤緯座標を高精度計算
+- 主要な恒星16個と惑星5個を星座図に表示
+- Canvasによる美麗な天球座標グラフ描画
+- 赤経・赤緯のグリッド線表示（天の赤道を強調）
+- ISSパネルに「星座図を表示」ボタンを追加
+
+### Improved
+- ECI座標系から赤経・赤緯を正確に計算
+- astronomy-engineで恒星と惑星の座標を計算
+- リアルタイムでISSの天球上の位置を視覚化
+
 ## [2.4.0] - 2026-01-15
 
 ### Added
