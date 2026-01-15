@@ -107,7 +107,7 @@
                 <div id="current-clock" class="text-xl font-semibold font-mono">--:--:--</div>
                 <div class="text-slate-400 text-sm">現在時刻 (Asia/Tokyo)</div>
                 <div class="text-slate-500 text-xs mt-2 flex items-center gap-2">
-                    Ver. 2.3.5
+                    Ver. 2.3.6
                     <button onclick="toggleNightVision()" class="text-xs bg-red-900/30 hover:bg-red-800/50 px-2 py-1 rounded border border-red-600/30" title="ナイトビジョンモード">
                         <i data-lucide="moon" class="w-3 h-3 inline"></i>
                     </button>
@@ -1101,46 +1101,61 @@
                 // --- 可視予報のロジック ---
                 const predictionPanel = document.getElementById('iss-prediction');
                 const predictionContent = document.getElementById('iss-prediction-content');
-                
-                // 1. 半径1300km以内（地上距離）
-                // ハーバーサイン公式で計算
+
+                // 地上距離の計算（ハーバーサイン公式）
                 const R = 6371; // 地球の半径 km
                 const dLat = (latitude - observerLat) * Math.PI / 180;
                 const dLon = (longitude - observerLon) * Math.PI / 180;
                 const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                          Math.cos(observerLat * Math.PI / 180) * Math.cos(latitude * Math.PI / 180) * 
+                          Math.cos(observerLat * Math.PI / 180) * Math.cos(latitude * Math.PI / 180) *
                           Math.sin(dLon/2) * Math.sin(dLon/2);
                 const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
                 const groundDistance = R * c;
 
-                // 2. 日没後2H以内か日の出前2H以内
+                // 視認可能範囲の判定（仰角0度以上 = 地平線上）
+                const isInVisibleRange = elevation > 0;
+
+                // 日没後2H以内か日の出前2H以内
                 const sunTimes = calculateSunMoonTimes(date, observerLat, observerLon);
                 let isSunCondition = false;
                 if (sunTimes.sunsetDate && sunTimes.sunriseDate) {
                     const sunset = moment(sunTimes.sunsetDate);
                     const sunrise = moment(sunTimes.sunriseDate);
                     const nowMoment = moment(date);
-                    
+
                     const diffAfterSunset = nowMoment.diff(sunset, 'hours', true);
                     const diffBeforeSunrise = sunrise.diff(nowMoment, 'hours', true);
-                    
+
                     if ((diffAfterSunset >= 0 && diffAfterSunset <= 2) || (diffBeforeSunrise >= 0 && diffBeforeSunrise <= 2)) {
                         isSunCondition = true;
                     }
                 }
 
-                // 3. 仰角20度以上
-                const isElevationCondition = elevation >= 20;
+                // 観測に最適な条件（距離1300km以内 + 仰角20度以上）
+                const isOptimalCondition = groundDistance <= 1300 && isSunCondition && elevation >= 20;
 
-                if (groundDistance <= 1300 && isSunCondition && isElevationCondition) {
+                // 表示の優先順位：最適条件 > 視認可能範囲内 > 範囲外
+                if (isOptimalCondition) {
                     predictionPanel.classList.remove('hidden');
                     predictionContent.innerHTML = `
-                        <div class="font-bold text-yellow-300">現在、ISSが観測可能な条件を満たしています！</div>
-                        <div class="mt-1">
+                        <div class="font-bold text-yellow-300">✨ 現在、ISSが観測に最適な条件です！</div>
+                        <div class="mt-1 text-sm">
                             距離: ${groundDistance.toFixed(0)} km (1300km以内)<br>
                             仰角: ${elevation.toFixed(1)}° (20°以上)<br>
-                            時間: ${isSunCondition ? '日出前/日没後の好条件' : ''}
+                            時間: 日出前/日没後の好条件
                         </div>
+                    `;
+                } else if (isInVisibleRange) {
+                    predictionPanel.classList.remove('hidden');
+                    predictionContent.innerHTML = `
+                        <div class="font-bold text-blue-300">👁️ ISSは視認可能範囲内にあります</div>
+                        <div class="mt-1 text-sm text-slate-300">
+                            地上距離: ${groundDistance.toFixed(0)} km<br>
+                            仰角: ${elevation.toFixed(1)}° (地平線上)<br>
+                            方位: ${azimuth.toFixed(1)}°
+                        </div>
+                        ${!isSunCondition ? '<div class="mt-1 text-xs text-slate-400">※日中のため肉眼では見えにくい可能性があります</div>' : ''}
+                        ${elevation < 20 ? '<div class="mt-1 text-xs text-slate-400">※仰角が低いため観測が困難な場合があります</div>' : ''}
                     `;
                 } else {
                     predictionPanel.classList.add('hidden');

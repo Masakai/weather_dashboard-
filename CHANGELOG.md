@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.6] - 2026-01-15
+
+### Added
+- ISS視認可能範囲内の表示機能を追加
+- 仰角0度以上（地平線上）の場合に「視認可能範囲内」と表示
+- 観測条件に応じて2段階の表示（最適条件/視認可能範囲内）
+
+### Changed
+- ISS可視予報の表示を改善し、視認可能範囲と最適観測条件を区別
+- 仰角が低い場合や日中の場合に注意メッセージを表示
+
+### Improved
+- ISSの現在位置から観測地点への視認可能性をより明確に表示
+- 地平線上にある場合は必ず視認可能範囲内として表示
+
 ## [2.3.5] - 2026-01-15
 
 ### Changed
