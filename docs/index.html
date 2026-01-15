@@ -107,7 +107,7 @@
                 <div id="current-clock" class="text-xl font-semibold font-mono">--:--:--</div>
                 <div class="text-slate-400 text-sm">現在時刻 (Asia/Tokyo)</div>
                 <div class="text-slate-500 text-xs mt-2 flex items-center gap-2">
-                    Ver. 2.6.2
+                    Ver. 2.6.3
                     <button onclick="toggleNightVision()" class="text-xs bg-red-900/30 hover:bg-red-800/50 px-2 py-1 rounded border border-red-600/30" title="ナイトビジョンモード">
                         <i data-lucide="moon" class="w-3 h-3 inline"></i>
                     </button>
@@ -569,14 +569,15 @@
                         <span>ISS位置（視野内の場合のみ表示）</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="inline-block w-2 h-2 bg-white rounded-full"></span>
-                        <span>1等星以上の明るい恒星（高度>0度）</span>
+                        <span class="inline-block w-3 h-3 bg-white rounded-full border border-slate-400"></span>
+                        <span>月（高度>0度）</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="inline-block w-3 h-3 bg-yellow-400 rounded-full"></span>
                         <span>惑星（高度>0度）</span>
                     </div>
                     <div>※ 観測地点から見える空を方位角・高度で表示（地平座標系）</div>
+                    <div class="text-[10px]">※ astronomy-engineの制限により恒星は表示されません</div>
                 </div>
             </div>
         </div>
@@ -2325,44 +2326,25 @@
                 ctx.lineTo(width, horizonY);
                 ctx.stroke();
 
-                // 主要な恒星リスト
-                const brightStars = [
-                    { name: 'シリウス', body: 'Sirius' },
-                    { name: 'カノープス', body: 'Canopus' },
-                    { name: 'アークトゥルス', body: 'Arcturus' },
-                    { name: 'ベガ', body: 'Vega' },
-                    { name: 'カペラ', body: 'Capella' },
-                    { name: 'リゲル', body: 'Rigel' },
-                    { name: 'プロキオン', body: 'Procyon' },
-                    { name: 'ベテルギウス', body: 'Betelgeuse' },
-                    { name: 'アルタイル', body: 'Altair' },
-                    { name: 'アルデバラン', body: 'Aldebaran' },
-                    { name: 'スピカ', body: 'Spica' },
-                    { name: 'アンタレス', body: 'Antares' },
-                    { name: 'ポルックス', body: 'Pollux' },
-                    { name: 'フォーマルハウト', body: 'Fomalhaut' },
-                    { name: 'デネブ', body: 'Deneb' },
-                    { name: 'レグルス', body: 'Regulus' }
-                ];
-
-                // 恒星の地平座標を計算（高度>0のもののみ）
+                // 天体リスト（惑星と月のみ。astronomy-engineは恒星をサポートしていません）
                 const visibleStars = [];
-                brightStars.forEach(star => {
-                    try {
-                        const equator = Astronomy.Equator(star.body, targetDate, observer, true, true);
-                        const horizon = Astronomy.Horizon(targetDate, observer, equator.ra, equator.dec, 'normal');
 
-                        if (horizon.altitude > 0) {
-                            visibleStars.push({
-                                name: star.name,
-                                azimuth: horizon.azimuth,
-                                altitude: horizon.altitude
-                            });
-                        }
-                    } catch (e) {
-                        // 一部の星が計算できない場合はスキップ
+                // 月の地平座標を計算
+                try {
+                    const moonEquator = Astronomy.Equator('Moon', targetDate, observer, true, true);
+                    const moonHorizon = Astronomy.Horizon(targetDate, observer, moonEquator.ra, moonEquator.dec, 'normal');
+
+                    if (moonHorizon.altitude > 0) {
+                        visibleStars.push({
+                            name: '月',
+                            azimuth: moonHorizon.azimuth,
+                            altitude: moonHorizon.altitude,
+                            isMoon: true
+                        });
                     }
-                });
+                } catch (e) {
+                    console.warn('月の計算をスキップ:', e.message);
+                }
 
                 // 惑星の地平座標を計算（高度>0のもののみ）
                 const planets = ['Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn'];
@@ -2381,15 +2363,24 @@
                             });
                         }
                     } catch (e) {
-                        // エラー時はスキップ
+                        console.warn(`惑星 ${planet} の計算をスキップ:`, e.message);
                     }
                 });
 
-                // 恒星と惑星を描画
+                // 天体を描画
                 visibleStars.forEach(star => {
                     const pos = azAltToCanvas(star.azimuth, star.altitude);
 
-                    if (star.isPlanet) {
+                    if (star.isMoon) {
+                        // 月は白い大きめの円
+                        ctx.fillStyle = '#f0f0f0';
+                        ctx.beginPath();
+                        ctx.arc(pos.x, pos.y, 5, 0, 2 * Math.PI);
+                        ctx.fill();
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    } else if (star.isPlanet) {
                         // 惑星は黄色の小さい円
                         ctx.fillStyle = '#fbbf24';
                         ctx.beginPath();
@@ -2403,7 +2394,7 @@
                         ctx.fill();
                     }
 
-                    // 星名を表示
+                    // 天体名を表示
                     ctx.fillStyle = '#94a3b8';
                     ctx.font = '10px sans-serif';
                     ctx.textAlign = 'left';
@@ -2516,10 +2507,13 @@
 
             } catch (error) {
                 console.error('星座図描画エラー:', error);
+                console.error('エラースタック:', error.stack);
                 ctx.fillStyle = '#ef4444';
                 ctx.font = '16px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('エラーが発生しました', width / 2, height / 2);
+                ctx.fillText('エラーが発生しました', width / 2, height / 2 - 20);
+                ctx.font = '12px sans-serif';
+                ctx.fillText(error.message, width / 2, height / 2 + 10);
             }
         }
 

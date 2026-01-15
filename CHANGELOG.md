@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.3] - 2026-01-15
+
+### Fixed
+- ISS星座図でastronomy-engineが恒星をサポートしていないため発生するエラーを修正
+- 恒星の表示を削除し、月と惑星のみを表示するように変更
+
+### Changed
+- 恒星の代わりに月を追加表示
+- エラーメッセージをより詳細に表示（エラー内容を画面に表示）
+
 ## [2.6.2] - 2026-01-15
 
 ### Fixed
