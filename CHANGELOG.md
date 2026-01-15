@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-01-15
+
+### Changed
+- ISS星座図を地平座標系（方位角・高度）で表示するように変更
+- 観測地点から実際に見える空の様子を表示（赤経・赤緯から変更）
+- ISSが視野内（高度>0°）にある場合のみISSを表示
+- ISSが地平線下の場合でも恒星と惑星は表示
+- 高度>0°の恒星と惑星のみを表示（地平線下は非表示）
+
+### Improved
+- グリッド線を方位角（北・東・南・西）と高度（15°刻み）に変更
+- 地平線（高度0°）を太線で強調表示
+- ISSの視野内/視野外を情報パネルで明確に表示
+- より直感的で実用的な星座図に改善
+
 ## [2.5.0] - 2026-01-15
 
 ### Added
