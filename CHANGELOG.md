@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2026-01-15
+
+### Fixed
+- 日時選択機能の時間変更ができない問題を修正
+- datetime-local inputにstep="900"属性を追加し、15分刻みでの時間変更を可能に
+- 日付と時刻の両方を確実に変更できるように改善
+
+### Changed
+- datetime-local inputにtitle属性を追加してユーザビリティを向上
+
 ## [2.3.0] - 2026-01-15
 
 ### Added

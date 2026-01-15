@@ -1,10 +1,10 @@
 # 🌟 天体観測できるかな？
 
-**バージョン 2.3.0**
+**バージョン 2.3.1**
 
 天体観測に最適な条件を総合判定する、インタラクティブな気象ダッシュボードです。雲量・月明かり・湿度・視程・風速などを総合的に評価し、星空観測の成功率を高めます。
 
-![Version](https://img.shields.io/badge/version-2.3.0-blue)
+![Version](https://img.shields.io/badge/version-2.3.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
@@ -257,6 +257,13 @@ daily=weathercode,temperature_2m_max,temperature_2m_min,
 ---
 
 ## 📝 バージョン履歴
+
+### v2.3.1 (2026-01-15)
+**パッチアップデート**
+
+- 🐛 日時選択機能を改善（時間変更ができない問題を修正）
+- ⏰ datetime-local inputにstep属性を追加（15分刻みで時間変更可能に）
+- 💡 ツールチップを追加してユーザビリティ向上
 
 ### v2.3.0 (2026-01-15)
 **マイナーアップデート**
