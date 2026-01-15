@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.7] - 2026-01-15
+
+### Changed
+- 「当日の夜」の定義を統一：当日の日没から翌日の日の出まで
+- 星空視認性スコアを日没～日の出の期間で計算（天文薄明基準から変更）
+- 天体観測予報も日没～日の出の期間で評価
+- レーダーチャートの雲晴れ度も日没～日の出の期間を反映
+
+### Improved
+- より一般的な「夜」の定義に合わせることで、わかりやすく統一的な評価を実現
+- 日没直後から日の出直前まで、夜間全体を通した評価を提供
+
 ## [2.3.6] - 2026-01-15
 
 ### Added

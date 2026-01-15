@@ -107,7 +107,7 @@
                 <div id="current-clock" class="text-xl font-semibold font-mono">--:--:--</div>
                 <div class="text-slate-400 text-sm">現在時刻 (Asia/Tokyo)</div>
                 <div class="text-slate-500 text-xs mt-2 flex items-center gap-2">
-                    Ver. 2.3.6
+                    Ver. 2.3.7
                     <button onclick="toggleNightVision()" class="text-xs bg-red-900/30 hover:bg-red-800/50 px-2 py-1 rounded border border-red-600/30" title="ナイトビジョンモード">
                         <i data-lucide="moon" class="w-3 h-3 inline"></i>
                     </button>
@@ -1535,18 +1535,15 @@
             renderTimeline(sunMoonTimes, targetDate);
 
             // 夜間平均雲量の計算（星空視認性スコアに使用）
-            // 天文薄明終了（夜）から翌日の天文薄明開始（朝）までのデータを取得
-            // 実際の天体観測は、日没後ではなく天文薄明終了後から本格化するため
-            const nightStart = sunMoonTimes.astroEndDate ? moment(sunMoonTimes.astroEndDate) :
-                              sunMoonTimes.sunsetDate ? moment(sunMoonTimes.sunsetDate).add(1, 'hour') :
-                              targetMoment.clone().startOf('day').add(19, 'hours');
+            // 当日の夜 = 当日の日没から翌日の日の出まで
+            const nightStart = sunMoonTimes.sunsetDate ? moment(sunMoonTimes.sunsetDate) :
+                              targetMoment.clone().startOf('day').add(18, 'hours');
 
-            // 翌日の天文薄明開始時刻を取得
+            // 翌日の日の出時刻を取得
             const nextDay = moment(targetDate).add(1, 'day').startOf('day').toDate();
             const nextDaySunMoonTimes = calculateSunMoonTimes(nextDay, currentLat, currentLon);
-            const nightEnd = nextDaySunMoonTimes.astroBeginDate ? moment(nextDaySunMoonTimes.astroBeginDate) :
-                            nextDaySunMoonTimes.sunriseDate ? moment(nextDaySunMoonTimes.sunriseDate).subtract(1, 'hour') :
-                            nightStart.clone().add(10, 'hours');
+            const nightEnd = nextDaySunMoonTimes.sunriseDate ? moment(nextDaySunMoonTimes.sunriseDate) :
+                            nightStart.clone().add(12, 'hours');
 
             let nightCloudSum = 0;
             let nightCloudCount = 0;
