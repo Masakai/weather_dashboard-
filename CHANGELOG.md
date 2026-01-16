@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.0] - 2026-01-16
+
+### Added
+- ISS通過の1時間前通知機能を追加
+    - 通過開始時刻の約1時間前（55-65分前）に自動通知
+    - ブラウザ通知とアプリ内バナー通知の両方に対応
+    - 通知には最大高度、継続時間などの詳細情報を表示
+    - 通知設定ボタンでブラウザ通知の許可をリクエスト
+    - 1分間隔での自動チェック
+
 ## [2.11.0] - 2026-01-16
 
 ### Added

@@ -80,6 +80,22 @@
 </head>
 <body class="bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white min-h-screen p-4 md:p-8">
 
+    <!-- ISS通過通知バナー -->
+    <div id="iss-notification-banner" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md w-full mx-4">
+        <div class="bg-gradient-to-r from-yellow-500/95 to-orange-500/95 backdrop-blur-sm rounded-xl shadow-2xl border-2 border-yellow-300/50 p-4">
+            <div class="flex items-start gap-3">
+                <i data-lucide="satellite" class="w-6 h-6 text-white flex-shrink-0 mt-0.5"></i>
+                <div class="flex-1">
+                    <div class="font-bold text-white text-sm mb-1">🛰️ ISS通過まもなく！</div>
+                    <div id="iss-notification-text" class="text-white text-xs"></div>
+                </div>
+                <button onclick="closeISSNotification()" class="text-white hover:text-yellow-100 transition flex-shrink-0">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="max-w-6xl mx-auto space-y-6">
         
         <!-- ヘッダー -->
@@ -413,9 +429,15 @@
                                         <i data-lucide="calendar-clock" class="w-4 h-4"></i>
                                         <span class="font-bold">次回パス予測（7日間）</span>
                                     </div>
-                                    <button onclick="calculateISSPasses()" class="text-xs text-blue-300 hover:text-blue-200 underline">
-                                        再計算
-                                    </button>
+                                    <div class="flex items-center gap-2">
+                                        <button onclick="requestISSNotificationPermission()" class="text-xs bg-yellow-600/20 hover:bg-yellow-600/30 px-2 py-1 rounded border border-yellow-600/30 text-yellow-300 transition flex items-center gap-1" title="1時間前通知を有効化">
+                                            <i data-lucide="bell" class="w-3 h-3"></i>
+                                            通知設定
+                                        </button>
+                                        <button onclick="calculateISSPasses()" class="text-xs text-blue-300 hover:text-blue-200 underline">
+                                            再計算
+                                        </button>
+                                    </div>
                                 </div>
                                 <div id="iss-passes-list" class="space-y-1 max-h-64 overflow-y-auto">
                                     <div class="text-slate-400 text-xs">計算中...</div>
@@ -722,6 +744,11 @@
         let currentDatetime = null; // 現在選択されている日時
         let skymapUpdateInterval = null; // 星座図のリアルタイム更新用interval
 
+        // ISS通知関連
+        let issNotificationInterval = null; // ISS通知チェック用interval
+        let notifiedPasses = new Set(); // 通知済みのパスを記録（重複通知を防ぐ）
+        let issNotificationPermission = 'default'; // 通知権限の状態
+
         // デフォルト位置（三島市）
         let currentLat = 35.1167;
         let currentLon = 138.9167;
@@ -753,6 +780,135 @@
 
             // Lucideアイコンを再初期化
             lucide.createIcons();
+        }
+
+        // --- ISS通過通知機能 ---
+
+        // ブラウザ通知の許可をリクエスト
+        function requestISSNotificationPermission() {
+            if ('Notification' in window) {
+                Notification.requestPermission().then(permission => {
+                    issNotificationPermission = permission;
+                    console.log('通知権限:', permission);
+                });
+            } else {
+                console.log('このブラウザは通知をサポートしていません');
+            }
+        }
+
+        // ISS通過の1時間前通知をチェック
+        function checkISSNotifications() {
+            if (!calculatedPasses || calculatedPasses.length === 0) {
+                return;
+            }
+
+            const now = new Date();
+            const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+            const oneHourFiveMinLater = new Date(now.getTime() + 65 * 60 * 1000);
+
+            // 次の1時間以内のパスを探す
+            for (let i = 0; i < calculatedPasses.length; i++) {
+                const pass = calculatedPasses[i];
+                const passTime = new Date(pass.startTime);
+
+                // パスの開始時刻が55分〜65分後の範囲にあるかチェック（5分の猶予）
+                if (passTime >= oneHourLater && passTime <= oneHourFiveMinLater) {
+                    const passKey = pass.startTime.getTime().toString();
+
+                    // まだ通知していないパスの場合
+                    if (!notifiedPasses.has(passKey)) {
+                        notifiedPasses.add(passKey);
+                        showISSNotification(pass);
+                        break; // 1回に1つのパスのみ通知
+                    }
+                }
+            }
+        }
+
+        // ISS通過通知を表示
+        function showISSNotification(pass) {
+            const startTime = moment(pass.startTime).format('HH:mm');
+            const maxElevation = pass.maxElevation.toFixed(1);
+            const duration = Math.round((pass.endTime - pass.startTime) / 1000 / 60);
+
+            const message = `約1時間後（${startTime}頃）にISS通過があります！\n最大高度: ${maxElevation}° | 継続時間: ${duration}分`;
+
+            // ブラウザ通知を表示（許可されている場合）
+            if (issNotificationPermission === 'granted') {
+                try {
+                    const notification = new Notification('🛰️ ISS通過まもなく！', {
+                        body: message.replace(/\n/g, ' '),
+                        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="yellow" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2v20M2 12h20"/></svg>',
+                        tag: 'iss-pass',
+                        requireInteraction: true,
+                        vibrate: [200, 100, 200]
+                    });
+
+                    notification.onclick = function() {
+                        window.focus();
+                        notification.close();
+                        // ISS情報セクションまでスクロール
+                        document.getElementById('iss-info')?.scrollIntoView({ behavior: 'smooth' });
+                    };
+                } catch (error) {
+                    console.error('通知エラー:', error);
+                }
+            }
+
+            // 画面内バナーを表示
+            showISSNotificationBanner(message);
+        }
+
+        // 画面内通知バナーを表示
+        function showISSNotificationBanner(message) {
+            const banner = document.getElementById('iss-notification-banner');
+            const text = document.getElementById('iss-notification-text');
+
+            text.textContent = message;
+            banner.classList.remove('hidden');
+
+            // Lucideアイコンを再描画
+            lucide.createIcons();
+
+            // 10秒後に自動的に閉じる
+            setTimeout(() => {
+                if (!banner.classList.contains('hidden')) {
+                    closeISSNotification();
+                }
+            }, 10000);
+        }
+
+        // 通知バナーを閉じる
+        function closeISSNotification() {
+            const banner = document.getElementById('iss-notification-banner');
+            banner.classList.add('hidden');
+        }
+
+        // ISS通知チェックを開始
+        function startISSNotificationCheck() {
+            // 既存のintervalをクリア
+            if (issNotificationInterval) {
+                clearInterval(issNotificationInterval);
+            }
+
+            // 初回チェック
+            checkISSNotifications();
+
+            // 1分ごとにチェック
+            issNotificationInterval = setInterval(() => {
+                checkISSNotifications();
+            }, 60 * 1000); // 60秒
+
+            console.log('ISS通過通知チェックを開始しました');
+        }
+
+        // ISS通知チェックを停止
+        function stopISSNotificationCheck() {
+            if (issNotificationInterval) {
+                clearInterval(issNotificationInterval);
+                issNotificationInterval = null;
+                console.log('ISS通過通知チェックを停止しました');
+            }
         }
 
         // --- お気に入り地点管理 ---
@@ -1589,6 +1745,9 @@
                         `;
                     }).join('');
                 }
+
+                // ISS通過通知チェックを開始
+                startISSNotificationCheck();
 
             } catch (error) {
                 console.error('パス計算エラー:', error);
@@ -3547,6 +3706,26 @@
             else if (azimuth >= 247.5 && azimuth < 292.5) return '西';
             else return '北西';
         }
+
+        // ページロード時の初期化
+        (function() {
+            // ISS通知権限をリクエスト（ユーザーの初回操作後に自動的に実行）
+            // ブラウザの制限により、ユーザー操作が必要な場合があります
+            if ('Notification' in window && Notification.permission === 'default') {
+                // 初回アクセス時のみプロンプト表示
+                console.log('ISS通過通知を有効にするには、通知を許可してください');
+            }
+
+            // 既に許可されている場合は状態を保存
+            if ('Notification' in window) {
+                issNotificationPermission = Notification.permission;
+            }
+
+            // ページを閉じる前に通知チェックを停止
+            window.addEventListener('beforeunload', () => {
+                stopISSNotificationCheck();
+            });
+        })();
     </script>
 </body>
 </html>
