@@ -1541,6 +1541,14 @@
         // 1-2. 天の川視認性を計算
         function calculateMilkyWayVisibility(observerDate, observerLat, observerLon, moonData, cloudCover) {
             try {
+                // 引数の検証
+                if (!observerDate || !observerLat || !observerLon || !moonData) {
+                    throw new Error('必要なパラメータが不足しています');
+                }
+                if (typeof cloudCover === 'undefined') {
+                    cloudCover = 0;
+                }
+
                 const observer = new Astronomy.Observer(observerLat, observerLon, 0);
 
                 // 銀河中心の座標（いて座A*）
@@ -1718,7 +1726,15 @@
 
             } catch (error) {
                 console.error('天の川計算エラー:', error);
-                document.getElementById('milkyway-visibility').innerHTML = '<div class="text-red-400">計算エラー</div>';
+                console.error('エラースタック:', error.stack);
+                console.error('引数:', { observerDate, observerLat, observerLon, moonData, cloudCover });
+                document.getElementById('milkyway-visibility').innerHTML = `
+                    <div class="text-red-400 text-xs p-2">
+                        <div class="font-semibold mb-1">計算エラー</div>
+                        <div class="text-xs text-slate-400">${error.message}</div>
+                        <div class="text-xs text-slate-500 mt-1">ブラウザのコンソールで詳細を確認してください</div>
+                    </div>
+                `;
             }
         }
 
