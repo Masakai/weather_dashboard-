@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.4] - 2026-01-16
+
+### Improved
+- ISS現在位置表示モードの星座図でISSの位置をリアルタイム更新（5秒ごと）
+- パス予測表示モードでは固定時刻のまま（変更なし）
+- 「現在位置に戻る」ボタンでリアルタイム更新を再開
+
 ## [2.9.1] - 2026-01-16
 
 ### Changed
