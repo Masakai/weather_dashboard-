@@ -2647,9 +2647,8 @@
 
                     // 軌道を線で描画
                     if (passPoints.length > 1) {
-                        ctx.strokeStyle = '#3b82f6';
+                        ctx.strokeStyle = '#eab308';
                         ctx.lineWidth = 2;
-                        ctx.setLineDash([5, 3]);
                         ctx.beginPath();
 
                         const firstPoint = azAltToCanvas(passPoints[0].azimuth, passPoints[0].elevation);
@@ -2661,22 +2660,43 @@
                         }
 
                         ctx.stroke();
-                        ctx.setLineDash([]);
 
-                        // 軌道上の点を描画（5分刻み）
+                        // 軌道上の矢印マーカーを描画（5分刻み）
                         passPoints.forEach((point, index) => {
-                            if (index % 10 === 0) { // 30秒×10 = 5分
+                            if (index % 10 === 0 && index < passPoints.length - 1) { // 30秒×10 = 5分
                                 const pos = azAltToCanvas(point.azimuth, point.elevation);
-                                ctx.fillStyle = '#60a5fa';
+                                const nextPoint = passPoints[Math.min(index + 1, passPoints.length - 1)];
+                                const nextPos = azAltToCanvas(nextPoint.azimuth, nextPoint.elevation);
+
+                                // 進行方向の角度を計算
+                                const angle = Math.atan2(nextPos.y - pos.y, nextPos.x - pos.x);
+
+                                // 矢印を描画
+                                ctx.save();
+                                ctx.translate(pos.x, pos.y);
+                                ctx.rotate(angle);
+
+                                ctx.fillStyle = '#eab308';
                                 ctx.beginPath();
-                                ctx.arc(pos.x, pos.y, 3, 0, 2 * Math.PI);
+                                ctx.moveTo(8, 0);
+                                ctx.lineTo(-4, -5);
+                                ctx.lineTo(-4, 5);
+                                ctx.closePath();
                                 ctx.fill();
 
-                                // 時刻を表示
-                                ctx.fillStyle = '#93c5fd';
-                                ctx.font = '9px sans-serif';
-                                ctx.textAlign = 'left';
-                                ctx.fillText(moment(point.time).format('HH:mm'), pos.x + 5, pos.y - 5);
+                                ctx.restore();
+
+                                // 時刻を表示（軌道から少し離れた位置に）
+                                const labelAngle = angle + Math.PI / 2; // 垂直方向
+                                const labelDist = 15;
+                                const labelX = pos.x + labelDist * Math.cos(labelAngle);
+                                const labelY = pos.y + labelDist * Math.sin(labelAngle);
+
+                                ctx.fillStyle = '#fbbf24';
+                                ctx.font = '11px sans-serif';
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillText(moment(point.time).format('HH:mm:ss'), labelX, labelY);
                             }
                         });
                     }
