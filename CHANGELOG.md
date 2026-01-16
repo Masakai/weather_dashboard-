@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.0] - 2026-01-16
+
+### Added
+- 大気透明度・シーイング指標機能を追加
+    - 湿度、視程、風速、気圧安定度から天体観測条件を推定
+    - 透明度スコア（星雲・星団観測向け）とシーイングスコア（惑星観測向け）を表示
+    - 観測目的別のアドバイスを提供
+    - 気圧の3時間変化から大気安定度を評価
+
 ## [2.9.4] - 2026-01-16
 
 ### Improved

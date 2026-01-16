@@ -107,7 +107,7 @@
                 <div id="current-clock" class="text-xl font-semibold font-mono">--:--:--</div>
                 <div class="text-slate-400 text-sm">現在時刻 (Asia/Tokyo)</div>
                 <div class="text-slate-500 text-xs mt-2 flex items-center gap-2">
-                    Ver. 2.9.4
+                    Ver. 2.10.0
                     <button onclick="toggleNightVision()" class="text-xs bg-red-900/30 hover:bg-red-800/50 px-2 py-1 rounded border border-red-600/30" title="ナイトビジョンモード">
                         <i data-lucide="moon" class="w-3 h-3 inline"></i>
                     </button>
@@ -435,6 +435,22 @@
                         </button>
                         <div id="content-milkyway" class="hidden px-4 pb-4">
                             <div id="milkyway-visibility" class="space-y-2 text-sm">
+                                <div class="text-slate-400">計算中...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 大気透明度・シーイング指標 -->
+                    <div class="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
+                        <button onclick="toggleAccordion('atmospheric')" class="w-full p-4 flex items-center justify-between hover:bg-slate-700/30 transition">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="eye" class="w-4 h-4 text-cyan-400"></i>
+                                <span class="font-semibold text-sm">大気透明度・シーイング指標</span>
+                            </div>
+                            <i id="icon-atmospheric" data-lucide="chevron-down" class="w-4 h-4 transition-transform"></i>
+                        </button>
+                        <div id="content-atmospheric" class="hidden px-4 pb-4">
+                            <div id="atmospheric-conditions" class="space-y-2 text-sm">
                                 <div class="text-slate-400">計算中...</div>
                             </div>
                         </div>
@@ -1773,6 +1789,181 @@
             }
         }
 
+        // 1-3. 大気透明度・シーイング指標を計算
+        function calculateAtmosphericConditions(humidity, visibility, windSpeed, pressure, pressurePrev) {
+            try {
+                const container = document.getElementById('atmospheric-conditions');
+
+                // 1. 湿度スコア (0-100, 高いほど良い)
+                let humidityScore = 100;
+                if (humidity >= 70) humidityScore = 20;
+                else if (humidity >= 50) humidityScore = 50;
+                else if (humidity >= 30) humidityScore = 80;
+                else humidityScore = 100;
+
+                // 2. 視程スコア (0-100, 高いほど良い)
+                let visibilityScore = 100;
+                if (visibility < 10) visibilityScore = 30;
+                else if (visibility < 15) visibilityScore = 60;
+                else if (visibility < 24) visibilityScore = 85;
+                else visibilityScore = 100;
+
+                // 3. 風速スコア (0-100, 低いほど良い - シーイングに影響)
+                let windScore = 100;
+                if (windSpeed >= 8) windScore = 30;
+                else if (windSpeed >= 5) windScore = 60;
+                else if (windSpeed >= 2) windScore = 85;
+                else windScore = 100;
+
+                // 4. 気圧安定度スコア (0-100, 変化が少ないほど良い)
+                let pressureScore = 100;
+                if (pressurePrev !== null && pressurePrev !== undefined) {
+                    const pressureChange = Math.abs(pressure - pressurePrev);
+                    if (pressureChange >= 3) pressureScore = 40;
+                    else if (pressureChange >= 2) pressureScore = 70;
+                    else if (pressureChange >= 1) pressureScore = 90;
+                    else pressureScore = 100;
+                } else {
+                    pressureScore = 75; // データがない場合は中程度と仮定
+                }
+
+                // 総合スコア（透明度重視）
+                const transparencyScore = Math.round(
+                    humidityScore * 0.30 +
+                    visibilityScore * 0.30 +
+                    windScore * 0.25 +
+                    pressureScore * 0.15
+                );
+
+                // シーイングスコア（惑星観測向け - 風速と気圧安定度を重視）
+                const seeingScore = Math.round(
+                    windScore * 0.50 +
+                    pressureScore * 0.30 +
+                    humidityScore * 0.15 +
+                    visibilityScore * 0.05
+                );
+
+                // 評価ランク
+                let transRank, transColor, transIcon;
+                if (transparencyScore >= 85) {
+                    transRank = '絶好';
+                    transColor = 'text-yellow-300';
+                    transIcon = '⭐⭐⭐';
+                } else if (transparencyScore >= 70) {
+                    transRank = '良好';
+                    transColor = 'text-green-300';
+                    transIcon = '⭐⭐';
+                } else if (transparencyScore >= 50) {
+                    transRank = '普通';
+                    transColor = 'text-blue-300';
+                    transIcon = '⭐';
+                } else {
+                    transRank = '不良';
+                    transColor = 'text-slate-400';
+                    transIcon = '☁️';
+                }
+
+                let seeingRank, seeingColor;
+                if (seeingScore >= 85) {
+                    seeingRank = '抜群';
+                    seeingColor = 'text-yellow-300';
+                } else if (seeingScore >= 70) {
+                    seeingRank = '良好';
+                    seeingColor = 'text-green-300';
+                } else if (seeingScore >= 50) {
+                    seeingRank = '普通';
+                    seeingColor = 'text-blue-300';
+                } else {
+                    seeingRank = '不良';
+                    seeingColor = 'text-slate-400';
+                }
+
+                // 用途別アドバイス
+                let planetAdvice = '';
+                if (seeingScore >= 80) {
+                    planetAdvice = '惑星の細部観測に最適な条件です！高倍率での観測をお楽しみください。';
+                } else if (seeingScore >= 60) {
+                    planetAdvice = '惑星観測が可能です。中倍率での観測がおすすめです。';
+                } else if (seeingScore >= 40) {
+                    planetAdvice = '惑星観測は可能ですが、像が揺らぐ可能性があります。';
+                } else {
+                    planetAdvice = '惑星の細部観測は難しい条件です。低倍率での観測をおすすめします。';
+                }
+
+                let dsoAdvice = '';
+                if (transparencyScore >= 80) {
+                    dsoAdvice = '星雲・銀河の観測に絶好の条件です！淡い天体もよく見えるでしょう。';
+                } else if (transparencyScore >= 60) {
+                    dsoAdvice = '星雲・銀河の観測が可能です。明るい天体がよく見えます。';
+                } else if (transparencyScore >= 40) {
+                    dsoAdvice = '星雲・銀河の観測は可能ですが、淡い天体は見えにくいかもしれません。';
+                } else {
+                    dsoAdvice = '星雲・銀河の観測は難しい条件です。明るい天体に絞ることをおすすめします。';
+                }
+
+                // HTMLを生成
+                container.innerHTML = `
+                    <div class="bg-slate-700/30 rounded-lg p-3 space-y-3">
+                        <!-- 総合評価 -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-slate-800/50 rounded-lg p-3">
+                                <div class="text-xs text-slate-400 mb-1">大気透明度</div>
+                                <div class="text-2xl font-bold ${transColor}">${transparencyScore}</div>
+                                <div class="text-sm ${transColor} mt-1">${transIcon} ${transRank}</div>
+                            </div>
+                            <div class="bg-slate-800/50 rounded-lg p-3">
+                                <div class="text-xs text-slate-400 mb-1">シーイング</div>
+                                <div class="text-2xl font-bold ${seeingColor}">${seeingScore}</div>
+                                <div class="text-sm ${seeingColor} mt-1">${seeingRank}</div>
+                            </div>
+                        </div>
+
+                        <!-- 詳細データ -->
+                        <div class="border-t border-slate-600 pt-2">
+                            <div class="text-xs text-slate-300 mb-2">📊 気象条件</div>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-400">湿度:</span>
+                                    <span class="text-white">${humidity}%</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-400">視程:</span>
+                                    <span class="text-white">${visibility}km</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-400">風速:</span>
+                                    <span class="text-white">${windSpeed.toFixed(1)}m/s</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-400">気圧:</span>
+                                    <span class="text-white">${pressure.toFixed(0)}hPa</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 用途別アドバイス -->
+                        <div class="border-t border-slate-600 pt-2">
+                            <div class="text-xs text-slate-300 mb-2">💡 用途別アドバイス</div>
+                            <div class="space-y-2 text-xs">
+                                <div class="bg-slate-800/30 rounded p-2">
+                                    <div class="text-slate-300 font-semibold mb-1">🪐 惑星観測</div>
+                                    <div class="text-slate-400 leading-relaxed">${planetAdvice}</div>
+                                </div>
+                                <div class="bg-slate-800/30 rounded p-2">
+                                    <div class="text-slate-300 font-semibold mb-1">🌌 星雲・銀河観測</div>
+                                    <div class="text-slate-400 leading-relaxed">${dsoAdvice}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('大気透明度計算エラー:', error);
+                document.getElementById('atmospheric-conditions').innerHTML = '<div class="text-red-400 text-xs">計算エラー</div>';
+            }
+        }
+
         // 2. 流星群カレンダーを更新
         function updateMeteorShowers(targetDate) {
             const currentYear = targetDate.getFullYear();
@@ -2107,14 +2298,6 @@
             document.getElementById('current-moon-age-text').innerText = moonData.age;
             document.getElementById('current-moon-name').innerText = moonData.phaseName;
 
-            // 天体イベント情報を更新
-            updateAstronomicalEvents(targetDate);
-            updateISSInfo(targetDate, currentLat, currentLon);
-            calculateVisiblePlanets(targetDate, currentLat, currentLon);
-            calculateMilkyWayVisibility(targetDate, currentLat, currentLon, moonData, currentCloudTotal);
-            updateMeteorShowers(targetDate);
-            updateRecommendedObjects(moonData.age);
-
             // 追加気象データの表示
             const currentWindSpeed = hourly.windspeed_10m ? hourly.windspeed_10m[currentIndex] : 0;
             const currentWindDir = hourly.winddirection_10m ? hourly.winddirection_10m[currentIndex] : 0;
@@ -2122,6 +2305,19 @@
             const currentDewpoint = hourly.dewpoint_2m ? hourly.dewpoint_2m[currentIndex] : 0;
             const currentVisibility = hourly.visibility ? (hourly.visibility[currentIndex] / 1000).toFixed(1) : 24;
             const currentHumidity = hourly.relative_humidity_2m[currentIndex];
+
+            // 3時間前の気圧を取得（気圧変化の計算用）
+            const prevIndex = Math.max(0, currentIndex - 3);
+            const prevPressure = hourly.surface_pressure ? hourly.surface_pressure[prevIndex] : null;
+
+            // 天体イベント情報を更新
+            updateAstronomicalEvents(targetDate);
+            updateISSInfo(targetDate, currentLat, currentLon);
+            calculateVisiblePlanets(targetDate, currentLat, currentLon);
+            calculateMilkyWayVisibility(targetDate, currentLat, currentLon, moonData, currentCloudTotal);
+            calculateAtmosphericConditions(currentHumidity, parseFloat(currentVisibility), currentWindSpeed, currentPressure, prevPressure);
+            updateMeteorShowers(targetDate);
+            updateRecommendedObjects(moonData.age);
 
             document.getElementById('wind-speed').innerText = `${currentWindSpeed.toFixed(1)} m/s`;
             const windDirText = getWindDirection(currentWindDir);
