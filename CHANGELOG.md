@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.1] - 2026-01-16
+
+### Changed
+- ISSのTLE（2行軌道要素形式）の取得頻度を1日1回に制限
+    - localStorageを使用してTLEデータと取得日時をキャッシュ
+    - キャッシュが24時間以内の場合は再利用し、不要なAPIリクエストを削減
+
+## [2.9.0] - 2026-01-16
+
+### Improved
+- 天体観測予報のレイアウトを改善
+    - 時間帯別の予報を横並びのカード形式に変更
+    - 記号（◎○△✕）を視認性スコアと同様のアイコン（⭐✨🌤️☁️）に変更
+
+## [2.8.1] - 2026-01-16
+
+### Added
+- 星座図に太陽を表示するように変更
+- 高度0度以上の時に太陽がオレンジ色のマーカーでプロットされるように改善
+
+## [2.8.0] - 2026-01-16
+
+### Improved
+- ISS星座図の計算に使用する時刻の最適化
+    - 現在位置を表示する場合は実時間（リアルタイム）を使用
+    - 予測パスを表示する場合はそのパスの最大高度時刻を使用
+    - これにより、ISSの位置に合わせて月や惑星の位置も正確に表示されるように改善
+
 ## [2.7.0] - 2026-01-15
 
 ### Added

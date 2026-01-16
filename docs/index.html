@@ -107,7 +107,7 @@
                 <div id="current-clock" class="text-xl font-semibold font-mono">--:--:--</div>
                 <div class="text-slate-400 text-sm">現在時刻 (Asia/Tokyo)</div>
                 <div class="text-slate-500 text-xs mt-2 flex items-center gap-2">
-                    Ver. 2.7.0
+                    Ver. 2.9.3
                     <button onclick="toggleNightVision()" class="text-xs bg-red-900/30 hover:bg-red-800/50 px-2 py-1 rounded border border-red-600/30" title="ナイトビジョンモード">
                         <i data-lucide="moon" class="w-3 h-3 inline"></i>
                     </button>
@@ -551,12 +551,16 @@
             </div>
         </div>
 
-        <!-- フッター (APIクレジット) -->
+        <!-- フッター (APIクレジット & 著作権) -->
         <footer class="glass-panel rounded-xl p-4 text-center text-slate-400 text-sm">
-            <p>
+            <p class="mb-2">
                 Data sources: 
-                <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" class="text-blue-300 hover:underline">Open-Meteo</a> (Weather Data) & 
-                <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" class="text-blue-300 hover:underline">OpenStreetMap</a> (Map & Address Data)
+                <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" class="text-blue-300 hover:underline">Open-Meteo</a> (Weather Data), 
+                <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" class="text-blue-300 hover:underline">OpenStreetMap</a> (Map & Address Data) & 
+                <a href="https://celestrak.org/" target="_blank" rel="noopener noreferrer" class="text-blue-300 hover:underline">CelesTrak</a> (ISS TLE Data)
+            </p>
+            <p class="text-xs border-t border-slate-700/50 pt-2">
+                &copy; 2026 株式会社リバーランズ・コンサルティング
             </p>
         </footer>
 
@@ -583,6 +587,10 @@
                     <div class="flex items-center gap-2">
                         <span class="inline-block w-3 h-3 bg-red-500 rounded-full"></span>
                         <span>ISS位置（視野内の場合のみ表示）</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-3 h-3 bg-orange-500 rounded-full"></span>
+                        <span>太陽（高度>0度）</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="inline-block w-3 h-3 bg-white rounded-full border border-slate-400"></span>
@@ -1132,6 +1140,17 @@
         async function calculateAndDisplayISS(date, observerLat, observerLon) {
             const container = document.getElementById('iss-info');
             try {
+                const now = new Date().getTime();
+                const cachedTLE = localStorage.getItem('issTLE');
+                const lastFetch = localStorage.getItem('lastTLEFetch');
+                const oneDay = 24 * 60 * 60 * 1000;
+
+                if (cachedTLE && lastFetch && (now - lastFetch < oneDay)) {
+                    issTLE = JSON.parse(cachedTLE);
+                } else {
+                    issTLE = null; // リフレッシュのためにクリア
+                }
+
                 if (!issTLE) {
                     // CelesTrakからISSのTLEを取得
                     try {
@@ -1145,6 +1164,9 @@
                                         line1: lines[i+1].trim(),
                                         line2: lines[i+2].trim()
                                     };
+                                    // キャッシュに保存
+                                    localStorage.setItem('issTLE', JSON.stringify(issTLE));
+                                    localStorage.setItem('lastTLEFetch', now.toString());
                                     break;
                                 }
                             }
@@ -1154,10 +1176,15 @@
                     }
 
                     if (!issTLE) {
-                        issTLE = {
-                            line1: "1 25544U 98067A   25014.54922454  .00015647  00000-0  27838-3 0  9990",
-                            line2: "2 25544  51.6391 350.3705 0005239  55.5135  47.8824 15.49528481491593"
-                        };
+                        // 取得失敗時はキャッシュがあればそれを使う、なければデフォルト
+                        if (cachedTLE) {
+                            issTLE = JSON.parse(cachedTLE);
+                        } else {
+                            issTLE = {
+                                line1: "1 25544U 98067A   25014.54922454  .00015647  00000-0  27838-3 0  9990",
+                                line2: "2 25544  51.6391 350.3705 0005239  55.5135  47.8824 15.49528481491593"
+                            };
+                        }
                     }
                 }
 
@@ -1277,7 +1304,7 @@
                             <span>TLE Source: CelesTrak</span>
                             <span>Real-time Update</span>
                         </div>
-                        <button onclick="openISSSkymapModal()" class="w-full mt-2 bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 py-2 px-3 rounded-lg text-xs font-semibold border border-blue-500/30 transition flex items-center justify-center gap-1">
+                        <button onclick="openISSSkymapModal(new Date())" class="w-full mt-2 bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 py-2 px-3 rounded-lg text-xs font-semibold border border-blue-500/30 transition flex items-center justify-center gap-1">
                             <i data-lucide="compass" class="w-3 h-3"></i>
                             星座図を表示
                         </button>
@@ -2245,28 +2272,39 @@
                 }
 
                 // 時間帯別の詳細評価
-                summary += "<br><span class='text-sm text-slate-400'>時間帯別: </span>";
+                summary += "<div class='flex flex-wrap gap-2 mt-3'>";
                 timeSlots.forEach(slot => {
                     if (slot.count > 0) {
                         const avg = slot.sum / slot.count;
-                        let rating = '';
+                        let icon = '';
                         let color = '';
+                        let bg = '';
                         if (avg < 10) {
-                            rating = '◎';
+                            icon = '⭐';
                             color = 'text-green-400';
+                            bg = 'bg-green-500/10';
                         } else if (avg < 25) {
-                            rating = '○';
+                            icon = '✨';
                             color = 'text-blue-400';
+                            bg = 'bg-blue-500/10';
                         } else if (avg < 50) {
-                            rating = '△';
+                            icon = '🌤️';
                             color = 'text-orange-400';
+                            bg = 'bg-orange-500/10';
                         } else {
-                            rating = '✕';
+                            icon = '☁️';
                             color = 'text-red-400';
+                            bg = 'bg-red-500/10';
                         }
-                        summary += `<span class='text-sm ${color}'>${slot.label}${rating}(${Math.round(avg)}%)</span> `;
+                        summary += `
+                            <div class='flex flex-col items-center justify-center px-3 py-2 rounded-xl border border-white/5 ${bg} min-w-[80px]'>
+                                <span class='text-xs text-slate-400 mb-1'>${slot.label}</span>
+                                <span class='text-lg mb-1'>${icon}</span>
+                                <span class='text-xs font-bold ${color}'>${Math.round(avg)}%</span>
+                            </div>`;
                     }
                 });
+                summary += "</div>";
             }
             
             // innerText -> innerHTML (タグを有効化するため)
@@ -2442,15 +2480,15 @@
             const skymapModal = document.getElementById('iss-skymap-modal');
             if (skymapModal && !skymapModal.classList.contains('hidden')) {
                 console.log('星図を再描画します。時刻:', targetDate);
-                drawISSSkymapCanvas();
+                drawISSSkymapCanvas(targetDate);
             }
         }
 
         // ISS星座図モーダル関連
-        function openISSSkymapModal() {
+        function openISSSkymapModal(forcedDate = null) {
             const modal = document.getElementById('iss-skymap-modal');
             modal.classList.remove('hidden');
-            drawISSSkymapCanvas();
+            drawISSSkymapCanvas(forcedDate);
             lucide.createIcons();
         }
 
@@ -2458,9 +2496,10 @@
             if (event && event.target !== event.currentTarget) return;
             const modal = document.getElementById('iss-skymap-modal');
             modal.classList.add('hidden');
+            window.selectedPass = null; // 閉じる時にパス選択をクリア
         }
 
-        function drawISSSkymapCanvas() {
+        function drawISSSkymapCanvas(forcedDate = null) {
             const canvas = document.getElementById('iss-skymap-canvas');
             const ctx = canvas.getContext('2d');
             const width = canvas.width;
@@ -2480,8 +2519,20 @@
                     return;
                 }
 
-                const targetDate = currentDatetime ? new Date(currentDatetime) : new Date();
-                console.log('星図描画時刻:', targetDate, 'currentDatetime:', currentDatetime);
+                // 時刻の決定: 
+                // 1. forcedDateが指定されている場合はそれを使用
+                // 2. forcedDateがなく、パスが選択されている場合はパスの最大高度時刻を使用
+                // 3. それ以外は現在時刻（dashboard time）を使用
+                let targetDate;
+                if (forcedDate) {
+                    targetDate = forcedDate;
+                } else if (window.selectedPass) {
+                    targetDate = window.selectedPass.maxElevationTime;
+                } else {
+                    targetDate = currentDatetime ? new Date(currentDatetime) : new Date();
+                }
+                
+                console.log('星図描画時刻:', targetDate, 'forcedDate:', forcedDate, 'selectedPass:', window.selectedPass);
                 const observer = new Astronomy.Observer(currentLat, currentLon, 0);
 
                 // 極座標変換関数（方位角・高度 → Canvas座標）
@@ -2575,8 +2626,25 @@
                     ctx.fillText(dir.label, x, y);
                 });
 
-                // 天体リスト（惑星と月のみ。astronomy-engineは恒星をサポートしていません）
+                // 天体リスト（太陽、月、惑星のみ。astronomy-engineは恒星をサポートしていません）
                 const visibleStars = [];
+
+                // 太陽の地平座標を計算
+                try {
+                    const sunEquator = Astronomy.Equator(Astronomy.Body.Sun, targetDate, observer, true, true);
+                    const sunHorizon = Astronomy.Horizon(targetDate, observer, sunEquator.ra, sunEquator.dec, 'normal');
+
+                    if (sunHorizon.altitude > 0) {
+                        visibleStars.push({
+                            name: '太陽',
+                            azimuth: sunHorizon.azimuth,
+                            altitude: sunHorizon.altitude,
+                            isSun: true
+                        });
+                    }
+                } catch (e) {
+                    console.warn('太陽の計算をスキップ:', e.message);
+                }
 
                 // 月の地平座標を計算
                 try {
@@ -2620,7 +2688,16 @@
                 visibleStars.forEach(star => {
                     const pos = azAltToCanvas(star.azimuth, star.altitude);
 
-                    if (star.isMoon) {
+                    if (star.isSun) {
+                        // 太陽はオレンジの大きめの円
+                        ctx.fillStyle = '#f97316';
+                        ctx.beginPath();
+                        ctx.arc(pos.x, pos.y, 6, 0, 2 * Math.PI);
+                        ctx.fill();
+                        ctx.strokeStyle = '#fb923c';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    } else if (star.isMoon) {
                         // 月は白い大きめの円
                         ctx.fillStyle = '#f0f0f0';
                         ctx.beginPath();
