@@ -2446,66 +2446,96 @@
                 const targetDate = currentDatetime ? new Date(currentDatetime) : new Date();
                 const observer = new Astronomy.Observer(currentLat, currentLon, 0);
 
-                // 座標変換関数（方位角・高度 → Canvas座標）
-                // 方位角: 0-360度（横軸、0度=北、90度=東、180度=南、270度=西）
-                // 高度: 0-90度（縦軸、0度=地平線、90度=天頂）
+                // 極座標変換関数（方位角・高度 → Canvas座標）
+                // 中心 = 天頂（高度90°）、外側 = 地平線（高度0°）
+                // 方位角: 0度=北（上）、90度=東（右）、180度=南（下）、270度=西（左）
+                const centerX = width / 2;
+                const centerY = height / 2;
+                const maxRadius = Math.min(width, height) / 2 - 40; // マージンを考慮
+
                 function azAltToCanvas(azimuth, altitude) {
-                    const x = (azimuth / 360) * width;
-                    const y = ((90 - altitude) / 90) * height;  // 高度0-90度を表示
+                    // 高度0° = maxRadius（地平線）、高度90° = 0（天頂）
+                    const radius = ((90 - altitude) / 90) * maxRadius;
+
+                    // 方位角を極座標の角度に変換（0°=北=上）
+                    const azimuthRadians = (azimuth * Math.PI) / 180;
+                    const x = centerX + radius * Math.sin(azimuthRadians);
+                    const y = centerY - radius * Math.cos(azimuthRadians);
+
                     return { x, y };
                 }
 
-                // グリッド線を描画
+                // タイトル表示（パスが選択されている場合）
+                if (window.selectedPass) {
+                    const pass = window.selectedPass;
+                    const titleText = `${moment(pass.startTime).format('YYYY/MM/DD HH:mm')} - ${moment(pass.endTime).format('HH:mm')}`;
+                    ctx.fillStyle = '#e2e8f0';
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(titleText, centerX, 25);
+                }
+
+                // グリッド線を描画（極座標形式）
                 ctx.strokeStyle = '#1e293b';
                 ctx.lineWidth = 1;
 
-                // 方位角のグリッド（0°, 90°, 180°, 270°）
-                const directions = [
-                    { deg: 0, label: '北' },
-                    { deg: 90, label: '東' },
-                    { deg: 180, label: '南' },
-                    { deg: 270, label: '西' }
-                ];
-
-                for (let az = 0; az <= 360; az += 90) {
-                    const x = (az / 360) * width;
-                    ctx.beginPath();
-                    ctx.moveTo(x, 0);
-                    ctx.lineTo(x, height);
-                    ctx.stroke();
-
-                    // 方位ラベル
-                    const dir = directions.find(d => d.deg === az);
-                    if (dir) {
-                        ctx.fillStyle = '#475569';
-                        ctx.font = 'bold 14px sans-serif';
-                        ctx.textAlign = 'center';
-                        ctx.fillText(dir.label, x, height - 5);
-                    }
-                }
-
-                // 高度のグリッド（15°, 30°, 45°, 60°, 75°）
+                // 同心円グリッド（高度15°, 30°, 45°, 60°, 75°）
                 for (let alt = 15; alt <= 75; alt += 15) {
-                    const y = ((90 - alt) / 90) * height;
+                    const radius = ((90 - alt) / 90) * maxRadius;
                     ctx.beginPath();
-                    ctx.moveTo(0, y);
-                    ctx.lineTo(width, y);
+                    ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
                     ctx.stroke();
 
+                    // 高度ラベルを北側（上）に表示
                     ctx.fillStyle = '#475569';
-                    ctx.font = '12px sans-serif';
-                    ctx.textAlign = 'left';
-                    ctx.fillText(`${alt}°`, 5, y - 5);
+                    ctx.font = '11px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`${alt}°`, centerX, centerY - radius - 3);
                 }
 
-                // 地平線（0度）を強調
-                const horizonY = ((90 - 0) / 90) * height;
+                // 地平線（高度0°）を外周の円として強調表示
                 ctx.strokeStyle = '#334155';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.moveTo(0, horizonY);
-                ctx.lineTo(width, horizonY);
+                ctx.arc(centerX, centerY, maxRadius, 0, 2 * Math.PI);
                 ctx.stroke();
+
+                // 放射線グリッド（方位角15°刻み）
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 1;
+                for (let az = 0; az < 360; az += 15) {
+                    const azRad = (az * Math.PI) / 180;
+                    const x1 = centerX;
+                    const y1 = centerY;
+                    const x2 = centerX + maxRadius * Math.sin(azRad);
+                    const y2 = centerY - maxRadius * Math.cos(azRad);
+
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+                }
+
+                // 方位ラベル（N, E, S, W）を外側に表示
+                const directions = [
+                    { deg: 0, label: 'N' },
+                    { deg: 90, label: 'E' },
+                    { deg: 180, label: 'S' },
+                    { deg: 270, label: 'W' }
+                ];
+
+                directions.forEach(dir => {
+                    const azRad = (dir.deg * Math.PI) / 180;
+                    const labelRadius = maxRadius + 20;
+                    const x = centerX + labelRadius * Math.sin(azRad);
+                    const y = centerY - labelRadius * Math.cos(azRad);
+
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(dir.label, x, y);
+                });
 
                 // 天体リスト（惑星と月のみ。astronomy-engineは恒星をサポートしていません）
                 const visibleStars = [];
@@ -2617,9 +2647,8 @@
 
                     // 軌道を線で描画
                     if (passPoints.length > 1) {
-                        ctx.strokeStyle = '#3b82f6';
+                        ctx.strokeStyle = '#eab308';
                         ctx.lineWidth = 2;
-                        ctx.setLineDash([5, 3]);
                         ctx.beginPath();
 
                         const firstPoint = azAltToCanvas(passPoints[0].azimuth, passPoints[0].elevation);
@@ -2631,22 +2660,43 @@
                         }
 
                         ctx.stroke();
-                        ctx.setLineDash([]);
 
-                        // 軌道上の点を描画（5分刻み）
+                        // 軌道上の矢印マーカーを描画（5分刻み）
                         passPoints.forEach((point, index) => {
-                            if (index % 10 === 0) { // 30秒×10 = 5分
+                            if (index % 10 === 0 && index < passPoints.length - 1) { // 30秒×10 = 5分
                                 const pos = azAltToCanvas(point.azimuth, point.elevation);
-                                ctx.fillStyle = '#60a5fa';
+                                const nextPoint = passPoints[Math.min(index + 1, passPoints.length - 1)];
+                                const nextPos = azAltToCanvas(nextPoint.azimuth, nextPoint.elevation);
+
+                                // 進行方向の角度を計算
+                                const angle = Math.atan2(nextPos.y - pos.y, nextPos.x - pos.x);
+
+                                // 矢印を描画
+                                ctx.save();
+                                ctx.translate(pos.x, pos.y);
+                                ctx.rotate(angle);
+
+                                ctx.fillStyle = '#eab308';
                                 ctx.beginPath();
-                                ctx.arc(pos.x, pos.y, 3, 0, 2 * Math.PI);
+                                ctx.moveTo(8, 0);
+                                ctx.lineTo(-4, -5);
+                                ctx.lineTo(-4, 5);
+                                ctx.closePath();
                                 ctx.fill();
 
-                                // 時刻を表示
-                                ctx.fillStyle = '#93c5fd';
-                                ctx.font = '9px sans-serif';
-                                ctx.textAlign = 'left';
-                                ctx.fillText(moment(point.time).format('HH:mm'), pos.x + 5, pos.y - 5);
+                                ctx.restore();
+
+                                // 時刻を表示（軌道から少し離れた位置に）
+                                const labelAngle = angle + Math.PI / 2; // 垂直方向
+                                const labelDist = 15;
+                                const labelX = pos.x + labelDist * Math.cos(labelAngle);
+                                const labelY = pos.y + labelDist * Math.sin(labelAngle);
+
+                                ctx.fillStyle = '#fbbf24';
+                                ctx.font = '11px sans-serif';
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillText(moment(point.time).format('HH:mm:ss'), labelX, labelY);
                             }
                         });
                     }
