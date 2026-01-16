@@ -1696,7 +1696,7 @@
                                 <div class="text-xs space-y-1">
                                     <div class="flex justify-between">
                                         <span class="text-slate-400">月齢:</span>
-                                        <span class="text-white">${moonData.age.toFixed(1)}日 (${moonPhase.toFixed(0)}%照)</span>
+                                        <span class="text-white">${moonData.age}日 (${moonPhase.toFixed(0)}%照)</span>
                                     </div>
                                     <div class="flex justify-between">
                                         <span class="text-slate-400">月の高度:</span>
@@ -2423,6 +2423,12 @@
 
             document.getElementById('loading').classList.add('hidden');
             document.getElementById('dashboard-content').classList.remove('hidden');
+
+            // ISS星図モーダルが開いている場合は再描画
+            const skymapModal = document.getElementById('iss-skymap-modal');
+            if (skymapModal && !skymapModal.classList.contains('hidden')) {
+                drawISSSkymapCanvas();
+            }
         }
 
         // ISS星座図モーダル関連
