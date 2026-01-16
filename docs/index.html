@@ -107,7 +107,7 @@
                 <div id="current-clock" class="text-xl font-semibold font-mono">--:--:--</div>
                 <div class="text-slate-400 text-sm">現在時刻 (Asia/Tokyo)</div>
                 <div class="text-slate-500 text-xs mt-2 flex items-center gap-2">
-                    Ver. 2.10.0
+                    Ver. 2.11.0
                     <button onclick="toggleNightVision()" class="text-xs bg-red-900/30 hover:bg-red-800/50 px-2 py-1 rounded border border-red-600/30" title="ナイトビジョンモード">
                         <i data-lucide="moon" class="w-3 h-3 inline"></i>
                     </button>
@@ -452,6 +452,90 @@
                         <div id="content-atmospheric" class="hidden px-4 pb-4">
                             <div id="atmospheric-conditions" class="space-y-2 text-sm">
                                 <div class="text-slate-400">計算中...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 天体写真露出計算機 -->
+                    <div class="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
+                        <button onclick="toggleAccordion('exposure')" class="w-full p-4 flex items-center justify-between hover:bg-slate-700/30 transition">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="camera" class="w-4 h-4 text-pink-400"></i>
+                                <span class="font-semibold text-sm">天体写真露出計算機</span>
+                            </div>
+                            <i id="icon-exposure" data-lucide="chevron-down" class="w-4 h-4 transition-transform"></i>
+                        </button>
+                        <div id="content-exposure" class="hidden px-4 pb-4">
+                            <div class="space-y-3 text-sm">
+                                <!-- カメラ設定 -->
+                                <div class="space-y-2">
+                                    <label class="block text-slate-300 text-xs font-semibold">センサーサイズ</label>
+                                    <select id="sensor-size" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm">
+                                        <option value="1.0">フルサイズ (35mm)</option>
+                                        <option value="1.5">APS-C (Nikon/Sony)</option>
+                                        <option value="1.6">APS-C (Canon)</option>
+                                        <option value="2.0">マイクロフォーサーズ</option>
+                                        <option value="2.7">1型センサー</option>
+                                    </select>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-slate-300 text-xs font-semibold mb-1">焦点距離 (mm)</label>
+                                        <input type="number" id="focal-length" value="50" min="1" max="3000" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-slate-300 text-xs font-semibold mb-1">F値</label>
+                                        <input type="number" id="aperture" value="2.8" min="0.7" max="22" step="0.1" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm">
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-slate-300 text-xs font-semibold mb-1">ISO感度</label>
+                                        <select id="iso" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm">
+                                            <option value="100">100</option>
+                                            <option value="200">200</option>
+                                            <option value="400">400</option>
+                                            <option value="800">800</option>
+                                            <option value="1600">1600</option>
+                                            <option value="3200" selected>3200</option>
+                                            <option value="6400">6400</option>
+                                            <option value="12800">12800</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-slate-300 text-xs font-semibold mb-1">赤道儀</label>
+                                        <select id="tracking-mount" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm">
+                                            <option value="none">なし（固定撮影）</option>
+                                            <option value="basic">あり（ポータブル）</option>
+                                            <option value="advanced">あり（高精度）</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-slate-300 text-xs font-semibold mb-1">撮影対象</label>
+                                    <select id="target-type" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm">
+                                        <option value="landscape">星景写真（風景+星空）</option>
+                                        <option value="milkyway">天の川</option>
+                                        <option value="widefield">星野写真（広域）</option>
+                                        <option value="dso">星雲・星団（DSO）</option>
+                                        <option value="galaxy">銀河</option>
+                                        <option value="planet">惑星</option>
+                                        <option value="moon">月面</option>
+                                    </select>
+                                </div>
+
+                                <button onclick="calculateExposure()" class="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                    <i data-lucide="calculator" class="w-4 h-4 inline mr-2"></i>
+                                    露出設定を計算
+                                </button>
+
+                                <!-- 計算結果 -->
+                                <div id="exposure-results" class="hidden mt-3 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
+                                    <!-- 結果がここに表示される -->
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1961,6 +2045,233 @@
             } catch (error) {
                 console.error('大気透明度計算エラー:', error);
                 document.getElementById('atmospheric-conditions').innerHTML = '<div class="text-red-400 text-xs">計算エラー</div>';
+            }
+        }
+
+        // 天体写真露出計算機
+        function calculateExposure() {
+            try {
+                // 入力値を取得
+                const cropFactor = parseFloat(document.getElementById('sensor-size').value);
+                const focalLength = parseFloat(document.getElementById('focal-length').value);
+                const aperture = parseFloat(document.getElementById('aperture').value);
+                const iso = parseInt(document.getElementById('iso').value);
+                const trackingMount = document.getElementById('tracking-mount').value;
+                const targetType = document.getElementById('target-type').value;
+
+                // 実焦点距離（35mm換算）
+                const effectiveFocalLength = focalLength * cropFactor;
+
+                let exposureTime, minExposure, maxExposure, recommendedISO, stackCount, totalExposure;
+                let advice = [];
+
+                // 赤道儀なしの場合：500ルール
+                if (trackingMount === 'none') {
+                    // 基本の500ルール
+                    exposureTime = 500 / effectiveFocalLength;
+
+                    // より正確な計算（NPF簡易版）を考慮
+                    // 赤緯によって変わるが、中緯度として計算
+                    const npfAdjusted = (35 * aperture) / effectiveFocalLength;
+
+                    // 2つの計算の平均を取る
+                    exposureTime = (exposureTime + npfAdjusted) / 2;
+
+                    minExposure = Math.max(1, Math.floor(exposureTime * 0.7));
+                    maxExposure = Math.ceil(exposureTime * 1.3);
+                    exposureTime = Math.round(exposureTime);
+
+                    advice.push('⚠️ 固定撮影では星が点像にならず流れる可能性があります');
+                    advice.push(`📐 500ルール適用: 最大${exposureTime}秒まで`);
+
+                } else if (trackingMount === 'basic') {
+                    // ポータブル赤道儀：60-120秒推奨
+                    exposureTime = 90;
+                    minExposure = 60;
+                    maxExposure = 120;
+                    advice.push('🔄 ポータブル赤道儀使用時: 60-120秒を推奨');
+                    advice.push('⚙️ 極軸合わせの精度が露出時間に影響します');
+
+                } else {
+                    // 高精度赤道儀：120-300秒推奨
+                    exposureTime = 180;
+                    minExposure = 120;
+                    maxExposure = 300;
+                    advice.push('🔭 高精度赤道儀使用時: 120-300秒を推奨');
+                    advice.push('⭐ オートガイダーがあればさらに長時間露出も可能');
+                }
+
+                // 対象天体別の推奨設定
+                switch (targetType) {
+                    case 'landscape':
+                        recommendedISO = [1600, 3200, 6400];
+                        stackCount = 5;
+                        totalExposure = exposureTime * stackCount;
+                        advice.push('🌄 星景写真: 地上風景も写るため明るめのISO推奨');
+                        advice.push('💡 前景を照らすライティングも検討してください');
+                        break;
+
+                    case 'milkyway':
+                        recommendedISO = [3200, 6400];
+                        stackCount = 10;
+                        totalExposure = exposureTime * stackCount;
+                        advice.push('🌌 天の川: ISO3200以上、広角レンズ推奨');
+                        advice.push('📅 新月前後の暗い夜を選んでください');
+                        break;
+
+                    case 'widefield':
+                        recommendedISO = [800, 1600, 3200];
+                        stackCount = 20;
+                        totalExposure = exposureTime * stackCount;
+                        advice.push('✨ 星野写真: 赤道儀使用を強く推奨');
+                        advice.push('📸 20-50枚のスタック合成で滑らかな画像に');
+                        break;
+
+                    case 'dso':
+                        recommendedISO = [800, 1600];
+                        stackCount = 30;
+                        totalExposure = exposureTime * stackCount;
+                        advice.push('🌫️ 星雲・星団: 総露出時間60分以上を目標に');
+                        advice.push('🔴 Hαフィルターの使用も検討してください');
+                        break;
+
+                    case 'galaxy':
+                        recommendedISO = [800, 1600];
+                        stackCount = 40;
+                        totalExposure = exposureTime * stackCount;
+                        advice.push('🌀 銀河: 総露出時間90分以上推奨');
+                        advice.push('📏 焦点距離300mm以上が望ましい');
+                        break;
+
+                    case 'planet':
+                        exposureTime = 0.01; // 1/100秒程度
+                        recommendedISO = [400, 800];
+                        stackCount = 1000; // 動画撮影
+                        advice.push('🪐 惑星: 短時間露出で動画撮影');
+                        advice.push('🎬 1000-3000フレームをスタック合成');
+                        advice.push('🔬 バローレンズで拡大撮影を推奨');
+                        break;
+
+                    case 'moon':
+                        exposureTime = 0.002; // 1/500秒程度
+                        recommendedISO = [100, 200, 400];
+                        stackCount = 100;
+                        advice.push('🌙 月面: ISO100-400、短時間露出');
+                        advice.push('📱 スマホでも十分撮影可能です');
+                        advice.push('🌓 月齢によって露出を調整してください');
+                        break;
+                }
+
+                // F値による補正アドバイス
+                if (aperture > 5.6) {
+                    advice.push(`⚠️ F${aperture}は暗め。F2.8-4の明るいレンズが理想的`);
+                } else if (aperture < 2) {
+                    advice.push(`✨ F${aperture}は非常に明るいレンズ！コマ収差に注意`);
+                }
+
+                // ISO感度によるアドバイス
+                if (iso < 800) {
+                    advice.push('💡 低ISO: ノイズは少ないが露出不足に注意');
+                } else if (iso >= 6400) {
+                    advice.push('⚠️ 高ISO: ノイズが増えるため複数枚のスタック推奨');
+                }
+
+                // 結果を表示
+                const resultsDiv = document.getElementById('exposure-results');
+                resultsDiv.classList.remove('hidden');
+
+                let resultHTML = '<div class="space-y-3">';
+
+                // 推奨露出時間
+                resultHTML += `
+                    <div class="bg-gradient-to-r from-pink-500/20 to-purple-500/20 p-3 rounded-lg border border-pink-500/30">
+                        <div class="text-xs text-slate-300 mb-1">推奨露出時間</div>
+                        <div class="text-2xl font-bold text-white">${exposureTime < 1 ? '1/' + Math.round(1/exposureTime) : exposureTime}秒</div>
+                        <div class="text-xs text-slate-400 mt-1">範囲: ${minExposure < 1 ? '1/' + Math.round(1/minExposure) : minExposure}秒 〜 ${maxExposure < 1 ? '1/' + Math.round(1/maxExposure) : maxExposure}秒</div>
+                    </div>
+                `;
+
+                // 推奨ISO
+                if (recommendedISO && recommendedISO.length > 0) {
+                    const isoList = recommendedISO.join(', ');
+                    const currentISOMatch = recommendedISO.includes(iso);
+                    resultHTML += `
+                        <div class="flex items-start gap-2">
+                            <i data-lucide="settings" class="w-4 h-4 text-slate-400 mt-0.5"></i>
+                            <div class="flex-1">
+                                <div class="text-xs text-slate-300">推奨ISO感度</div>
+                                <div class="text-sm ${currentISOMatch ? 'text-green-400' : 'text-yellow-400'}">
+                                    ${isoList}
+                                    ${currentISOMatch ? ' ✓' : ' (現在: ' + iso + ')'}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // スタック枚数と総露出時間
+                if (targetType !== 'planet' && targetType !== 'moon') {
+                    const totalMinutes = Math.round(totalExposure / 60);
+                    resultHTML += `
+                        <div class="flex items-start gap-2">
+                            <i data-lucide="layers" class="w-4 h-4 text-slate-400 mt-0.5"></i>
+                            <div class="flex-1">
+                                <div class="text-xs text-slate-300">推奨スタック枚数</div>
+                                <div class="text-sm text-white">${stackCount}枚 (総露出時間: 約${totalMinutes}分)</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    resultHTML += `
+                        <div class="flex items-start gap-2">
+                            <i data-lucide="video" class="w-4 h-4 text-slate-400 mt-0.5"></i>
+                            <div class="flex-1">
+                                <div class="text-xs text-slate-300">推奨撮影方法</div>
+                                <div class="text-sm text-white">動画撮影 (${stackCount}+フレーム)</div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // アドバイス
+                if (advice.length > 0) {
+                    resultHTML += '<div class="border-t border-slate-600 pt-2 mt-2">';
+                    resultHTML += '<div class="text-xs text-slate-300 font-semibold mb-2">撮影アドバイス</div>';
+                    resultHTML += '<div class="space-y-1">';
+                    advice.forEach(adv => {
+                        resultHTML += `<div class="text-xs text-slate-300">${adv}</div>`;
+                    });
+                    resultHTML += '</div></div>';
+                }
+
+                // 撮影設定サマリー
+                resultHTML += `
+                    <div class="border-t border-slate-600 pt-2 mt-2">
+                        <div class="text-xs text-slate-300 font-semibold mb-2">設定サマリー</div>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="text-slate-400">焦点距離</div>
+                            <div class="text-white">${focalLength}mm (35mm換算: ${Math.round(effectiveFocalLength)}mm)</div>
+                            <div class="text-slate-400">F値</div>
+                            <div class="text-white">F${aperture}</div>
+                            <div class="text-slate-400">ISO感度</div>
+                            <div class="text-white">ISO ${iso}</div>
+                            <div class="text-slate-400">赤道儀</div>
+                            <div class="text-white">${trackingMount === 'none' ? 'なし' : trackingMount === 'basic' ? 'ポータブル' : '高精度'}</div>
+                        </div>
+                    </div>
+                `;
+
+                resultHTML += '</div>';
+                resultsDiv.innerHTML = resultHTML;
+
+                // Lucideアイコンを再描画
+                lucide.createIcons();
+
+            } catch (error) {
+                console.error('露出計算エラー:', error);
+                const resultsDiv = document.getElementById('exposure-results');
+                resultsDiv.classList.remove('hidden');
+                resultsDiv.innerHTML = '<div class="text-red-400 text-xs">計算エラーが発生しました</div>';
             }
         }
 
