@@ -1957,6 +1957,13 @@
             const val = document.getElementById('target-datetime').value;
             if (val && weatherData) {
                 renderDashboard(moment(val));
+
+                // ISS星図モーダルが開いている場合は再描画
+                const skymapModal = document.getElementById('iss-skymap-modal');
+                if (skymapModal && !skymapModal.classList.contains('hidden')) {
+                    console.log('updateDashboardTime: 星図を再描画');
+                    drawISSSkymapCanvas();
+                }
             }
         }
 
@@ -1988,7 +1995,14 @@
 
             setDatePickerValue(targetMoment);
             renderDashboard(targetMoment);
-            
+
+            // ISS星図モーダルが開いている場合は再描画
+            const skymapModal = document.getElementById('iss-skymap-modal');
+            if (skymapModal && !skymapModal.classList.contains('hidden')) {
+                console.log('selectDate: 星図を再描画');
+                drawISSSkymapCanvas();
+            }
+
             // スクロールを上部へ（スマホなどで見やすくするため）
             document.getElementById('dashboard-content').scrollIntoView({ behavior: 'smooth' });
         }
