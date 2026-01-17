@@ -20,6 +20,7 @@ export function toggleAccordion(id) {
 }
 // XSS対策: HTMLエスケープ関数
 export function escapeHtml(text) {
+    if (text === undefined || text === null) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;

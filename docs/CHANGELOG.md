@@ -11,6 +11,13 @@ MINOR: 後方互換性のある機能追加がある場合
 
 PATCH: 後方互換性のあるバグ修正や軽微なスタイル変更の場合
 
+[3.1.2] - 2026-01-17
+
+Fixed
+
+- ui-utils.js の修正: escapeHtml 関数に null/undefined ガードを追加。
+- キャッシュ対策: index.html で読み込む main.js にバージョンパラメータを追加。
+
 [3.1.1] - 2026-01-17
 
 Fixed
