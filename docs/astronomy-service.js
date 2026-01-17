@@ -1,5 +1,5 @@
-import { AppState } from './state.js?v=3.1.6';
-import { METEOR_SHOWERS, SEASONAL_OBJECTS } from './constants.js?v=3.1.6';
+import { AppState } from './state.js?v=3.1.7';
+import { METEOR_SHOWERS, SEASONAL_OBJECTS } from './constants.js?v=3.1.7';
 export function calculateSunMoonTimes(date, lat, lon) {
     try {
         const observer = new Astronomy.Observer(lat, lon, 0);
@@ -1007,66 +1007,105 @@ export function updateAstronomicalEvents(targetDate) {
         const searchStart = new Date(targetDate.getTime() - 180 * 24 * 60 * 60 * 1000); // 180日前
         const searchEnd = new Date(targetDate.getTime() + 180 * 24 * 60 * 60 * 1000);   // 180日後
 
-        // 月食の検索
-        let lunarEclipse = Astronomy.SearchLunarEclipse(searchStart);
-        const lunarEclipses = [];
-        while (lunarEclipse && lunarEclipse.peak < searchEnd) {
-            if (lunarEclipse.peak >= searchStart) {
-                lunarEclipses.push(lunarEclipse);
+        // 月食の検索（改善版：無限ループ防止とエラーハンドリング）
+        try {
+            let lunarEclipse = Astronomy.SearchLunarEclipse(searchStart);
+            const lunarEclipses = [];
+            let loopCount = 0;
+            const MAX_ITERATIONS = 20; // 180日間で最大20回の月食は起こりえない
+
+            while (lunarEclipse && lunarEclipse.peak < searchEnd && loopCount < MAX_ITERATIONS) {
+                if (lunarEclipse.peak >= searchStart) {
+                    lunarEclipses.push(lunarEclipse);
+                }
+                lunarEclipse = Astronomy.NextLunarEclipse(lunarEclipse.peak);
+                loopCount++;
             }
-            lunarEclipse = Astronomy.NextLunarEclipse(lunarEclipse.peak);
+
+            if (loopCount >= MAX_ITERATIONS) {
+                console.warn('月食検索が最大反復回数に達しました');
+            }
+
+            // 月食を追加（継続時間情報を含む）
+            lunarEclipses.forEach(eclipse => {
+                const peakDate = moment(eclipse.peak);
+                const typeText = eclipse.kind === 'total' ? '皆既月食' :
+                               eclipse.kind === 'partial' ? '部分月食' : '半影月食';
+                const daysUntil = peakDate.diff(moment(targetDate), 'days');
+                const timeText = daysUntil === 0 ? '今日' :
+                               daysUntil > 0 ? `${daysUntil}日後` : `${-daysUntil}日前`;
+
+                // 継続時間を計算（sd_*は半継続時間なので2倍する）
+                let duration = '';
+                if (eclipse.sd_total && eclipse.sd_total > 0) {
+                    duration = `皆既継続時間: 約${Math.round(eclipse.sd_total * 2)}分`;
+                } else if (eclipse.sd_partial && eclipse.sd_partial > 0) {
+                    duration = `部分継続時間: 約${Math.round(eclipse.sd_partial * 2)}分`;
+                } else if (eclipse.sd_penum && eclipse.sd_penum > 0) {
+                    duration = `半影継続時間: 約${Math.round(eclipse.sd_penum * 2)}分`;
+                }
+
+                events.push({
+                    date: peakDate,
+                    type: typeText,
+                    time: peakDate.format('M月D日 HH:mm'),
+                    daysUntil: daysUntil,
+                    timeText: timeText,
+                    icon: '🌕',
+                    color: 'orange',
+                    duration: duration,
+                    note: '世界中の広い範囲で観測可能'
+                });
+            });
+        } catch (error) {
+            console.error('月食検索エラー:', error);
+            // 月食のエラーでも日食検索は続行
         }
 
-        // 日食の検索
-        let solarEclipse = Astronomy.SearchGlobalSolarEclipse(searchStart);
-        const solarEclipses = [];
-        while (solarEclipse && solarEclipse.peak < searchEnd) {
-            if (solarEclipse.peak >= searchStart) {
-                solarEclipses.push(solarEclipse);
+        // 日食の検索（改善版：無限ループ防止とエラーハンドリング）
+        try {
+            let solarEclipse = Astronomy.SearchGlobalSolarEclipse(searchStart);
+            const solarEclipses = [];
+            let loopCount = 0;
+            const MAX_ITERATIONS = 20; // 180日間で最大20回の日食は起こりえない
+
+            while (solarEclipse && solarEclipse.peak < searchEnd && loopCount < MAX_ITERATIONS) {
+                if (solarEclipse.peak >= searchStart) {
+                    solarEclipses.push(solarEclipse);
+                }
+                solarEclipse = Astronomy.NextGlobalSolarEclipse(solarEclipse.peak);
+                loopCount++;
             }
-            solarEclipse = Astronomy.NextGlobalSolarEclipse(solarEclipse.peak);
+
+            if (loopCount >= MAX_ITERATIONS) {
+                console.warn('日食検索が最大反復回数に達しました');
+            }
+
+            // 日食を追加
+            solarEclipses.forEach(eclipse => {
+                const peakDate = moment(eclipse.peak);
+                const typeText = eclipse.kind === 'total' ? '皆既日食' :
+                               eclipse.kind === 'annular' ? '金環日食' :
+                               eclipse.kind === 'partial' ? '部分日食' : '日食';
+                const daysUntil = peakDate.diff(moment(targetDate), 'days');
+                const timeText = daysUntil === 0 ? '今日' :
+                               daysUntil > 0 ? `${daysUntil}日後` : `${-daysUntil}日前`;
+
+                events.push({
+                    date: peakDate,
+                    type: typeText,
+                    time: peakDate.format('M月D日 HH:mm'),
+                    daysUntil: daysUntil,
+                    timeText: timeText,
+                    icon: '🌑',
+                    color: 'yellow',
+                    note: '観測可能地域は限定的です'
+                });
+            });
+        } catch (error) {
+            console.error('日食検索エラー:', error);
+            // 日食のエラーがあってもイベント表示は続行
         }
-
-        // 月食を追加
-        lunarEclipses.forEach(eclipse => {
-            const peakDate = moment(eclipse.peak);
-            const typeText = eclipse.kind === 'total' ? '皆既月食' :
-                           eclipse.kind === 'partial' ? '部分月食' : '半影月食';
-            const daysUntil = peakDate.diff(moment(targetDate), 'days');
-            const timeText = daysUntil === 0 ? '今日' :
-                           daysUntil > 0 ? `${daysUntil}日後` : `${-daysUntil}日前`;
-
-            events.push({
-                date: peakDate,
-                type: typeText,
-                time: peakDate.format('M月D日 HH:mm'),
-                daysUntil: daysUntil,
-                timeText: timeText,
-                icon: '🌕',
-                color: 'orange'
-            });
-        });
-
-        // 日食を追加
-        solarEclipses.forEach(eclipse => {
-            const peakDate = moment(eclipse.peak);
-            const typeText = eclipse.kind === 'total' ? '皆既日食' :
-                           eclipse.kind === 'annular' ? '金環日食' :
-                           eclipse.kind === 'partial' ? '部分日食' : '日食';
-            const daysUntil = peakDate.diff(moment(targetDate), 'days');
-            const timeText = daysUntil === 0 ? '今日' :
-                           daysUntil > 0 ? `${daysUntil}日後` : `${-daysUntil}日前`;
-
-            events.push({
-                date: peakDate,
-                type: typeText,
-                time: peakDate.format('M月D日 HH:mm'),
-                daysUntil: daysUntil,
-                timeText: timeText,
-                icon: '🌑',
-                color: 'yellow'
-            });
-        });
 
         // 日付順にソート
         events.sort((a, b) => a.date - b.date);
@@ -1094,6 +1133,8 @@ export function updateAstronomicalEvents(targetDate) {
                             <span class="text-xs ${textColor}">${event.timeText}</span>
                         </div>
                         <div class="text-xs text-slate-400 mt-1">${event.time}</div>
+                        ${event.duration ? `<div class="text-xs text-slate-300 mt-1">⏱️ ${event.duration}</div>` : ''}
+                        ${event.note ? `<div class="text-xs text-slate-400 mt-1">📍 ${event.note}</div>` : ''}
                         ${!isPast && Math.abs(event.daysUntil) <= 30 ? '<div class="text-xs text-yellow-300 mt-1">⭐ 近日開催</div>' : ''}
                     </div>
                 `;
@@ -1101,5 +1142,6 @@ export function updateAstronomicalEvents(targetDate) {
         }
     } catch (error) {
         console.error('天文イベント計算エラー:', error);
+        container.innerHTML = '<div class="text-red-400 text-xs">天文イベントの計算中にエラーが発生しました</div>';
     }
 }

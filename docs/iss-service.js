@@ -1,4 +1,4 @@
-import { AppState } from './state.js?v=3.1.6';
+import { AppState } from './state.js?v=3.1.7';
 
 export function requestISSNotificationPermission() {
     if ('Notification' in window) {

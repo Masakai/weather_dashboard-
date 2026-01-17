@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.7] - 2026-01-17
+
+### Improved
+- `astronomy-service.js`: 月食・日食予測機能の大幅改善
+  - 無限ループ防止のためのセーフガード追加（最大反復回数20回）
+  - 月食・日食の検索処理を個別にエラーハンドリング（一方がエラーでも他方は続行）
+  - 月食の継続時間情報を表示に追加（皆既・部分・半影の継続時間を分単位で表示）
+  - 月食に「世界中の広い範囲で観測可能」の注記を追加
+  - 日食に「観測可能地域は限定的です」の注記を追加
+  - エラー発生時のユーザーフィードバックを改善
+
 ## [3.1.6] - 2026-01-17
 
 ### Added

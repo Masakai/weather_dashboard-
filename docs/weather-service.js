@@ -1,5 +1,5 @@
-import { AppState } from './state.js?v=3.1.6';
-import { METEOR_SHOWERS, SEASONAL_OBJECTS } from './constants.js?v=3.1.6';
+import { AppState } from './state.js?v=3.1.7';
+import { METEOR_SHOWERS, SEASONAL_OBJECTS } from './constants.js?v=3.1.7';
 
 export function calculateStarryScore(cloudCover, moonAge, humidity, visibility = 24, windSpeed = 5) {
     // 雲量スコア (0-100) - 雲が少ないほど高い
