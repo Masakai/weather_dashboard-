@@ -380,12 +380,19 @@ escapeHtml関数にnull/undefinedガードを追加し、main.jsのキャッシ�
 
 ### プルリクエストワークフロー
 
+**重要**: この環境では `gh` CLI が利用できません。`git` コマンドのみを使用してください。
+
 1. **フィーチャーブランチで開発**（例: `claude/feature-name-ABC123`）
 2. **変更をコミット**（説明的な日本語メッセージ）
 3. **CHANGELOG.md を更新**（すべての変更を記載）
 4. **バージョンを更新**（すべてのファイル）
 5. **リモートにプッシュ**（`git push -u origin claude/feature-name-ABC123`）
-6. **PR を作成**（日本語のサマリー付きでメインブランチへ）
+6. **PR を作成**:
+   - `gh` CLI は使用できないため、GitHub Web UI を使用
+   - ブラウザで https://github.com/Masakai/weather_dashboard にアクセス
+   - 「Compare & pull request」ボタンをクリック
+   - または直接 URL を開く: `https://github.com/Masakai/weather_dashboard/compare/main...ブランチ名`
+   - タイトルと説明を日本語で記述してPRを作成
 
 ---
 
