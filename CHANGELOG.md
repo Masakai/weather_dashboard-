@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-01-17
+
+### Changed
+- 大規模な内部構造のリファクタリング（機能分割とモジュール化）
+    - `functions.js` (約3,000行) を責務に応じて5つのサービスモジュールに分割
+        - `ui-utils.js`: 共通UI制御（アコーディオン、ナイトビジョン等）
+        - `location-service.js`: 位置情報、地図、お気に入り地点管理
+        - `weather-service.js`: 天気データ取得、ダッシュボード・チャート描画
+        - `iss-service.js`: ISS軌道計算、接近通知
+        - `astronomy-service.js`: 惑星、銀河、天文イベント計算
+    - ES Modules (`type="module"`) を導入し、依存関係を明示化
+    - バラバラだったグローバル変数を `AppState` オブジェクト (`state.js`) に一元化
+    - 静的データを `constants.js` へ分離
+    - 既存のインラインイベントハンドラとの互換性を保つためのブリッジ機能を `main.js` に実装
+
 ## [2.14.0] - 2026-01-17
 
 ### Improved
