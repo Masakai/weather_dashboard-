@@ -284,7 +284,38 @@ export async function calculateAndDisplayISS(date, observerLat, observerLon) {
                 ${elevation < 20 ? '<div class="mt-1 text-xs text-slate-400">※仰角が低いため観測が困難な場合があります</div>' : ''}
             `;
         } else {
-            predictionPanel.classList.add('hidden');
+            // 次回のパスを探す
+            const nextPass = AppState.iss.calculatedPasses.find(p => p.startTime > date);
+            if (nextPass) {
+                predictionPanel.classList.remove('hidden');
+                const diffMs = nextPass.startTime - date;
+                const hours = Math.floor(diffMs / (1000 * 60 * 60));
+                const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+                
+                let timeStr = "";
+                if (hours > 0) timeStr += `${hours}時間`;
+                if (minutes > 0 || hours > 0) timeStr += `${minutes}分`;
+                timeStr += `${seconds}秒`;
+
+                predictionContent.innerHTML = `
+                    <div class="font-bold text-slate-400 flex items-center gap-1">
+                        <i data-lucide="clock" class="w-3 h-3"></i>
+                        次回可視範囲に入るまで
+                    </div>
+                    <div class="mt-1 text-lg font-mono text-white">
+                        ${timeStr}
+                    </div>
+                    <div class="text-[10px] text-slate-500 mt-1">
+                        開始時刻: ${moment(nextPass.startTime).format('M/D HH:mm:ss')} (最大高度 ${nextPass.maxElevation.toFixed(0)}°)
+                    </div>
+                `;
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            } else {
+                predictionPanel.classList.add('hidden');
+            }
         }
 
         container.innerHTML = `
@@ -316,7 +347,7 @@ export async function calculateAndDisplayISS(date, observerLat, observerLon) {
                 </div>
                 <button onclick="openISSSkymapModal(new Date())" class="w-full mt-2 bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 py-2 px-3 rounded-lg text-xs font-semibold border border-blue-500/30 transition flex items-center justify-center gap-1">
                     <i data-lucide="compass" class="w-3 h-3"></i>
-                    星座図を表示
+                    リアルタイム星座図を表示
                 </button>
             </div>
         `;
@@ -550,6 +581,7 @@ export function showPassOnSkymap(passIndex) {
     if (passIndex < 0 || passIndex >= AppState.iss.calculatedPasses.length) return;
 
     window.selectedPass = AppState.iss.calculatedPasses[passIndex];
+    AppState.iss.isRealtimeMode = false;
 
     // リアルタイム更新を停止（パス予測表示モードに切り替え）
     if (AppState.ui.skymapUpdateInterval) {
@@ -562,8 +594,6 @@ export function showPassOnSkymap(passIndex) {
 export function openISSSkymapModal(forcedDate = null) {
     const modal = document.getElementById('iss-skymap-modal');
     modal.classList.remove('hidden');
-    drawISSSkymapCanvas(forcedDate);
-    lucide.createIcons();
 
     // 既存のintervalをクリア
     if (AppState.ui.skymapUpdateInterval) {
@@ -571,19 +601,25 @@ export function openISSSkymapModal(forcedDate = null) {
         AppState.ui.skymapUpdateInterval = null;
     }
 
+    // 引数があり、かつパスが選択されていない場合はリアルタイムモードとみなす（ボタンからの呼び出し等）
+    // パス選択（showPassOnSkymap）からの呼び出しの場合は window.selectedPass が設定されている
+    if (forcedDate && !window.selectedPass) {
+        AppState.iss.isRealtimeMode = true;
+    }
+
+    drawISSSkymapCanvas(forcedDate);
+    lucide.createIcons();
+
     // 現在位置表示の場合のみリアルタイム更新を開始（5秒ごと）
-    // パス予測表示の場合（window.selectedPass がある場合）は更新しない
-    if (!window.selectedPass) {
+    if (AppState.iss.isRealtimeMode && !window.selectedPass) {
         AppState.ui.skymapUpdateInterval = setInterval(() => {
-            // パス選択状態が変わっていないことを確認
-            if (!window.selectedPass) {
+            if (AppState.iss.isRealtimeMode && !window.selectedPass) {
                 drawISSSkymapCanvas();
             } else {
-                // パスが選択されたら更新を停止
                 clearInterval(AppState.ui.skymapUpdateInterval);
                 AppState.ui.skymapUpdateInterval = null;
             }
-        }, 5000); // 5秒ごとに更新
+        }, 5000);
     }
 }
 export function closeISSSkymapModal(event) {
@@ -591,6 +627,7 @@ export function closeISSSkymapModal(event) {
     const modal = document.getElementById('iss-skymap-modal');
     modal.classList.add('hidden');
     window.selectedPass = null; // 閉じる時にパス選択をクリア
+    AppState.iss.isRealtimeMode = false;
 
     // リアルタイム更新を停止
     if (AppState.ui.skymapUpdateInterval) {
@@ -600,6 +637,7 @@ export function closeISSSkymapModal(event) {
 }
 export function returnToCurrentPosition() {
     window.selectedPass = null;
+    AppState.iss.isRealtimeMode = true;
     drawISSSkymapCanvas();
 
     // リアルタイム更新を再開
@@ -608,7 +646,7 @@ export function returnToCurrentPosition() {
         AppState.ui.skymapUpdateInterval = null;
     }
     AppState.ui.skymapUpdateInterval = setInterval(() => {
-        if (!window.selectedPass) {
+        if (AppState.iss.isRealtimeMode && !window.selectedPass) {
             drawISSSkymapCanvas();
         } else {
             clearInterval(AppState.ui.skymapUpdateInterval);
@@ -637,11 +675,14 @@ export function drawISSSkymapCanvas(forcedDate = null) {
         }
 
         // 時刻の決定: 
-        // 1. forcedDateが指定されている場合はそれを使用
-        // 2. forcedDateがなく、パスが選択されている場合はパスの最大高度時刻を使用
-        // 3. それ以外は現在時刻（dashboard time）を使用
+        // 1. リアルタイムモードの場合は現在時刻を使用
+        // 2. forcedDateが指定されている場合はそれを使用
+        // 3. パスが選択されている場合はパスの最大高度時刻を使用
+        // 4. それ以外は現在時刻（dashboard time）を使用
         let targetDate;
-        if (forcedDate) {
+        if (AppState.iss.isRealtimeMode && !window.selectedPass) {
+            targetDate = new Date();
+        } else if (forcedDate) {
             targetDate = forcedDate;
         } else if (window.selectedPass) {
             targetDate = window.selectedPass.maxElevationTime;
