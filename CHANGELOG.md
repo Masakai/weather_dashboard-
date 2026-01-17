@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.0] - 2026-01-17
+
+### Improved
+- 夜間観測タイムラインに雲量データを反映
+    - 天文薄明の間の「観測適時」を雲量に基づいて4段階に色分け（緑・黄・橙・赤）
+    - タイムラインの各セグメントに詳細なツールチップ（状態、雲量、時間帯）を追加
+    - タイムライン下に雲量別の凡例を追加
+    - 実際の表示色と整合性をとるため、凡例のアイコンに透明度を適用
+
 ## [2.13.0] - 2026-01-17
 
 ### Added
