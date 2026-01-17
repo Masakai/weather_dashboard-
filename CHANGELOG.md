@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.6] - 2026-01-17
+
+### Added
+- `index.html`: Google Analytics 4（GA4）トラッキングコードを追加し、アクセス統計機能を実装（測定ID: G-6Q6VBQNM11）。
+
 ## [3.1.5] - 2026-01-17
 
 ### Fixed
