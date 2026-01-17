@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.5] - 2026-01-17
+
+### Fixed
+- `iss-service.js`: ISSリアルタイム星座図の更新不具合を修正。
+  - ダッシュボードで特定の日時を選択している場合でも、リアルタイム星座図を表示した際は常に「現在」のISS位置と空の状態を表示・更新し続けるように改善。
+  - リアルタイムモードの状態管理を導入し、パス予測表示との切り替えをより確実にしました。
+
+## [3.1.4] - 2026-01-17
+
+### Added
+- `iss-service.js`: ISSリアルタイム更新画面において、ISSが地平線下にある場合に、次に可視範囲に入るまでのカウントダウンを表示する機能を追加。
+
 ## [3.1.3] - 2026-01-17
 
 ### Fixed
