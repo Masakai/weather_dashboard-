@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.13.0] - 2026-01-17
+
+### Added
+- 月齢による観測推奨天体に季節対応機能を追加
+    - 春夏秋冬の季節ごとに最適な観測対象を表示
+    - 新月期には季節の代表的な銀河・星雲・星団を推奨
+    - 満月期や上弦・下弦期にも季節に応じた観測対象を提案
+    - 季節の表示を追加し、現在の季節と月齢状況を明確化
+    - 各天体に観測に適した理由を詳しく説明
+
 ## [2.12.0] - 2026-01-16
 
 ### Added
