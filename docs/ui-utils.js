@@ -1,5 +1,5 @@
-import { AppState } from './state.js?v=3.1.7';
-import { METEOR_SHOWERS, SEASONAL_OBJECTS } from './constants.js?v=3.1.7';
+import { AppState } from './state.js?v=3.1.8';
+import { METEOR_SHOWERS, SEASONAL_OBJECTS } from './constants.js?v=3.1.8';
 
 export function toggleNightVision() {
     document.body.classList.toggle('night-vision');

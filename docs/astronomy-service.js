@@ -1,5 +1,5 @@
-import { AppState } from './state.js?v=3.1.7';
-import { METEOR_SHOWERS, SEASONAL_OBJECTS } from './constants.js?v=3.1.7';
+import { AppState } from './state.js?v=3.1.8';
+import { METEOR_SHOWERS, SEASONAL_OBJECTS } from './constants.js?v=3.1.8';
 export function calculateSunMoonTimes(date, lat, lon) {
     try {
         const observer = new Astronomy.Observer(lat, lon, 0);
@@ -1155,30 +1155,14 @@ export function updateAstronomicalEvents(targetDate) {
             // 日食のエラーがあってもイベント表示は続行
         }
 
+        // 過去のイベントを除外し、未来のイベントのみを表示
+        const futureEvents = events.filter(event => event.daysUntil >= 0);
+
         // 日付順にソート：直近のものから表示
-        // 1. 未来のイベント（これから起こる）を優先し、日付が近い順
-        // 2. 過去のイベントは後ろに配置し、日付が新しい順（最近終わったものから）
-        const targetMoment = moment(targetDate);
-        events.sort((a, b) => {
-            const aIsFuture = a.daysUntil >= 0;
-            const bIsFuture = b.daysUntil >= 0;
-
-            // 未来のイベントを優先
-            if (aIsFuture && !bIsFuture) return -1;
-            if (!aIsFuture && bIsFuture) return 1;
-
-            // 両方とも未来、または両方とも過去の場合
-            if (aIsFuture && bIsFuture) {
-                // 未来：日付が近い順（昇順）
-                return a.date - b.date;
-            } else {
-                // 過去：日付が新しい順（降順）- 最近終わったものから
-                return b.date - a.date;
-            }
-        });
+        futureEvents.sort((a, b) => a.date - b.date);
 
         // 表示
-        if (events.length === 0) {
+        if (futureEvents.length === 0) {
             container.innerHTML = '<div class="text-slate-400 text-xs">今後180日間に予定されている月食・日食はありません。</div>';
         } else {
             // Tailwind CDNでは動的クラス生成ができないため、固定クラスを使用
@@ -1187,22 +1171,19 @@ export function updateAstronomicalEvents(targetDate) {
                 yellow: { bg: 'bg-yellow-900/30', text: 'text-yellow-300' }
             };
 
-            container.innerHTML = events.map(event => {
-                const isPast = event.daysUntil < 0;
+            container.innerHTML = futureEvents.map(event => {
                 const style = colorStyles[event.color] || colorStyles.yellow;
-                const bgColor = isPast ? 'bg-slate-700/30' : style.bg;
-                const textColor = isPast ? 'text-slate-400' : style.text;
 
                 return `
-                    <div class="${bgColor} rounded-lg p-2">
+                    <div class="${style.bg} rounded-lg p-2">
                         <div class="flex items-center justify-between">
-                            <span class="font-semibold ${textColor}">${event.icon} ${event.type}</span>
-                            <span class="text-xs ${textColor}">${event.timeText}</span>
+                            <span class="font-semibold ${style.text}">${event.icon} ${event.type}</span>
+                            <span class="text-xs ${style.text}">${event.timeText}</span>
                         </div>
                         <div class="text-xs text-slate-400 mt-1">${event.time}</div>
                         ${event.duration ? `<div class="text-xs text-slate-300 mt-1">⏱️ ${event.duration}</div>` : ''}
                         ${event.note ? `<div class="text-xs text-slate-400 mt-1">📍 ${event.note}</div>` : ''}
-                        ${!isPast && Math.abs(event.daysUntil) <= 30 ? '<div class="text-xs text-yellow-300 mt-1">⭐ 近日開催</div>' : ''}
+                        ${event.daysUntil <= 30 ? '<div class="text-xs text-yellow-300 mt-1">⭐ 近日開催</div>' : ''}
                     </div>
                 `;
             }).join('');
