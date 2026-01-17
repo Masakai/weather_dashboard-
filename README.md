@@ -1,10 +1,10 @@
 # 🌟 天体観測できるかな？
 
-**バージョン 3.1.6**
+**バージョン 3.1.7**
 
 天体観測に最適な条件を総合判定する、インタラクティブな気象ダッシュボードです。雲量・月明かり・湿度・視程・風速などを総合的に評価し、星空観測の成功率を高めます。
 
-![Version](https://img.shields.io/badge/version-3.1.6-blue)
+![Version](https://img.shields.io/badge/version-3.1.7-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
