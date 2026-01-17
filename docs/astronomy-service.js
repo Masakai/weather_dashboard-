@@ -1014,10 +1014,31 @@ export function updateAstronomicalEvents(targetDate) {
             let loopCount = 0;
             const MAX_ITERATIONS = 20; // 180日間で最大20回の月食は起こりえない
 
-            while (lunarEclipse && lunarEclipse.peak < searchEnd && loopCount < MAX_ITERATIONS) {
-                if (lunarEclipse.peak >= searchStart) {
+            console.log('月食検索開始:', {
+                searchStart: searchStart,
+                searchEnd: searchEnd,
+                firstEclipse: lunarEclipse ? lunarEclipse.peak : 'なし'
+            });
+
+            while (lunarEclipse && loopCount < MAX_ITERATIONS) {
+                // peak は AstroTime オブジェクトなので、.date プロパティで Date に変換
+                const peakDate = lunarEclipse.peak.date || lunarEclipse.peak;
+
+                console.log(`月食 ${loopCount + 1}:`, {
+                    peak: peakDate,
+                    kind: lunarEclipse.kind,
+                    inRange: peakDate >= searchStart && peakDate < searchEnd
+                });
+
+                if (peakDate >= searchEnd) {
+                    // 検索範囲を超えたので終了
+                    break;
+                }
+
+                if (peakDate >= searchStart) {
                     lunarEclipses.push(lunarEclipse);
                 }
+
                 lunarEclipse = Astronomy.NextLunarEclipse(lunarEclipse.peak);
                 loopCount++;
             }
@@ -1026,9 +1047,12 @@ export function updateAstronomicalEvents(targetDate) {
                 console.warn('月食検索が最大反復回数に達しました');
             }
 
+            console.log('検出された月食の数:', lunarEclipses.length);
+
             // 月食を追加（継続時間情報を含む）
             lunarEclipses.forEach(eclipse => {
-                const peakDate = moment(eclipse.peak);
+                // peak.date で Date オブジェクトを取得
+                const peakDate = moment(eclipse.peak.date || eclipse.peak);
                 const typeText = eclipse.kind === 'total' ? '皆既月食' :
                                eclipse.kind === 'partial' ? '部分月食' : '半影月食';
                 const daysUntil = peakDate.diff(moment(targetDate), 'days');
@@ -1069,10 +1093,31 @@ export function updateAstronomicalEvents(targetDate) {
             let loopCount = 0;
             const MAX_ITERATIONS = 20; // 180日間で最大20回の日食は起こりえない
 
-            while (solarEclipse && solarEclipse.peak < searchEnd && loopCount < MAX_ITERATIONS) {
-                if (solarEclipse.peak >= searchStart) {
+            console.log('日食検索開始:', {
+                searchStart: searchStart,
+                searchEnd: searchEnd,
+                firstEclipse: solarEclipse ? solarEclipse.peak : 'なし'
+            });
+
+            while (solarEclipse && loopCount < MAX_ITERATIONS) {
+                // peak は AstroTime オブジェクトなので、.date プロパティで Date に変換
+                const peakDate = solarEclipse.peak.date || solarEclipse.peak;
+
+                console.log(`日食 ${loopCount + 1}:`, {
+                    peak: peakDate,
+                    kind: solarEclipse.kind,
+                    inRange: peakDate >= searchStart && peakDate < searchEnd
+                });
+
+                if (peakDate >= searchEnd) {
+                    // 検索範囲を超えたので終了
+                    break;
+                }
+
+                if (peakDate >= searchStart) {
                     solarEclipses.push(solarEclipse);
                 }
+
                 solarEclipse = Astronomy.NextGlobalSolarEclipse(solarEclipse.peak);
                 loopCount++;
             }
@@ -1081,9 +1126,12 @@ export function updateAstronomicalEvents(targetDate) {
                 console.warn('日食検索が最大反復回数に達しました');
             }
 
+            console.log('検出された日食の数:', solarEclipses.length);
+
             // 日食を追加
             solarEclipses.forEach(eclipse => {
-                const peakDate = moment(eclipse.peak);
+                // peak.date で Date オブジェクトを取得
+                const peakDate = moment(eclipse.peak.date || eclipse.peak);
                 const typeText = eclipse.kind === 'total' ? '皆既日食' :
                                eclipse.kind === 'annular' ? '金環日食' :
                                eclipse.kind === 'partial' ? '部分日食' : '日食';
