@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.8] - 2026-01-17
+
+### Fixed
+- `astronomy-service.js`: 月食・日食予測のAstroTimeオブジェクト処理を修正
+  - `peak.date`プロパティを使用してAstroTimeオブジェクトをDate型に正しく変換
+  - 検索範囲の判定ロジックを修正し、2026年3月3日の皆既月食など、すべての月食・日食が正しく検出されるように改善
+  - デバッグログを追加し、検索プロセスの可視化を実装
+
+### Changed
+- `astronomy-service.js`: 天文イベント表示から過去のイベントを除外
+  - 未来のイベント（これから起こる月食・日食）のみを表示するように変更
+  - 表示順序を直近のイベントから並べるように改善
+  - UIをシンプルにし、ユーザーが次の観測機会を把握しやすくしました
+
 ## [3.1.7] - 2026-01-17
 
 ### Improved
