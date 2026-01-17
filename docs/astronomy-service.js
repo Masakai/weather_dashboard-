@@ -1155,8 +1155,27 @@ export function updateAstronomicalEvents(targetDate) {
             // 日食のエラーがあってもイベント表示は続行
         }
 
-        // 日付順にソート
-        events.sort((a, b) => a.date - b.date);
+        // 日付順にソート：直近のものから表示
+        // 1. 未来のイベント（これから起こる）を優先し、日付が近い順
+        // 2. 過去のイベントは後ろに配置し、日付が新しい順（最近終わったものから）
+        const targetMoment = moment(targetDate);
+        events.sort((a, b) => {
+            const aIsFuture = a.daysUntil >= 0;
+            const bIsFuture = b.daysUntil >= 0;
+
+            // 未来のイベントを優先
+            if (aIsFuture && !bIsFuture) return -1;
+            if (!aIsFuture && bIsFuture) return 1;
+
+            // 両方とも未来、または両方とも過去の場合
+            if (aIsFuture && bIsFuture) {
+                // 未来：日付が近い順（昇順）
+                return a.date - b.date;
+            } else {
+                // 過去：日付が新しい順（降順）- 最近終わったものから
+                return b.date - a.date;
+            }
+        });
 
         // 表示
         if (events.length === 0) {
