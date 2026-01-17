@@ -11,6 +11,17 @@ MINOR: 後方互換性のある機能追加がある場合
 
 PATCH: 後方互換性のあるバグ修正や軽微なスタイル変更の場合
 
+[3.1.0] - 2026-01-17
+
+Fixed
+
+- iss-service.js の修復: ファイル冒頭の構文エラーや不要なコードの混入、未完成だった関数の不整合を全面的に解消。
+- astronomy-service.js の構文エラー修正: timelineDuration の重複宣言 (Cannot declare a const variable twice) を修正。
+- 観測適性レーダーチャートの不具合修正: weather-service.js に renderRadarChart を新規実装し、データ取得時に発生していたエラーを解消。
+- ダッシュボード描画の最適化: astronomy-service.js 内の不完全な renderDashboard 関数を削除し、weather-service.js の正当な関数が呼ばれるように調整。
+- weather-service.js のバグ修正: updateStarryScore 内での未定義変数参照を修正。
+- サービスモジュールの整合性向上: location-service.js や astronomy-service.js で発生していたコードの欠損や混入を修復。
+
 [3.0.0] - 2026-01-17
 
 Changed

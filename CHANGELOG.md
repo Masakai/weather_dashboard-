@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-01-17
+
+### Fixed
+- `iss-service.js`: ファイル冒頭の構文エラー、コード混入、未完成の関数を修復。
+- `astronomy-service.js`: `timelineDuration` の重複宣言による SyntaxError を修正。
+- `weather-service.js`: `renderRadarChart` を新規実装し、データ取得時の「Can't find variable: renderRadarChart」エラーを解消。
+- `weather-service.js`: `updateStarryScore` 内の未定義変数参照バグを修正。
+- `location-service.js`: コード混入の除去と、`getWindDirection` などの未完成だった関数を修復。
+- `astronomy-service.js`: 欠落していた `calculateMoonData` などの重要関数を再実装。
+
+### Removed
+- `astronomy-service.js`: `weather-service.js` と重複していた不完全な `renderDashboard` 関数を削除。
+- `astronomy-service.js`: 使用されていなかった `renderCelestialEvents` 関数を削除。
+
 ## [3.0.0] - 2026-01-17
 
 ### Changed
