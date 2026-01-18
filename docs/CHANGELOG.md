@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.2] - 2026-01-18
+
+### Added
+- `iss-service.js`: ISS星座図のリアルタイム表示で軌跡を青い線で表示する機能を追加
+  - リアルタイムモードでISSの過去の位置を記録し、青い破線で軌跡を描画
+  - 軌跡データは過去10分間を保持し、古いデータは自動的に削除
+  - モーダルを閉じる時や現在位置に戻る時に軌跡データをクリア
+- `state.js`: `AppState.iss.realtimeTrail` 配列を追加し、リアルタイム軌跡データを管理
+
+### Improved
+- ISSの移動経路を視覚的に確認できるようになり、観測の利便性が向上
+
 ## [3.2.1] - 2026-01-18
 
 ### Fixed

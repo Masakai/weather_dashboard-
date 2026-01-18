@@ -1,5 +1,5 @@
-import { AppState } from './state.js?v=3.2.1';
-import { escapeHtml } from './ui-utils.js?v=3.2.1';
+import { AppState } from './state.js?v=3.2.2';
+import { escapeHtml } from './ui-utils.js?v=3.2.2';
 
 export function addFavoriteLocation() {
     const name = prompt('この地点の名前を入力してください:', document.getElementById('location-name').innerText || '未設定');

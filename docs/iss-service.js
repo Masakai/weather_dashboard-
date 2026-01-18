@@ -1,4 +1,4 @@
-import { AppState } from './state.js?v=3.2.1';
+import { AppState } from './state.js?v=3.2.2';
 
 export function requestISSNotificationPermission() {
     if ('Notification' in window) {
@@ -628,6 +628,7 @@ export function closeISSSkymapModal(event) {
     modal.classList.add('hidden');
     window.selectedPass = null; // 閉じる時にパス選択をクリア
     AppState.iss.isRealtimeMode = false;
+    AppState.iss.realtimeTrail = []; // 軌跡データをクリア
 
     // リアルタイム更新を停止
     if (AppState.ui.skymapUpdateInterval) {
@@ -638,6 +639,7 @@ export function closeISSSkymapModal(event) {
 export function returnToCurrentPosition() {
     window.selectedPass = null;
     AppState.iss.isRealtimeMode = true;
+    AppState.iss.realtimeTrail = []; // 軌跡データをクリア
     drawISSSkymapCanvas();
 
     // リアルタイム更新を再開
@@ -1006,6 +1008,38 @@ export function drawISSSkymapCanvas(forcedDate = null) {
 
             // ISSが視野内（地平線上）にあるか
             issVisible = issAltitude > 0;
+
+            // リアルタイムモードの場合、軌跡データに追加
+            if (AppState.iss.isRealtimeMode && !window.selectedPass && issVisible) {
+                AppState.iss.realtimeTrail.push({
+                    azimuth: issAzimuth,
+                    altitude: issAltitude,
+                    time: targetDate.getTime()
+                });
+
+                // 古いデータを削除（10分以上前のデータ）
+                const tenMinutesAgo = targetDate.getTime() - 10 * 60 * 1000;
+                AppState.iss.realtimeTrail = AppState.iss.realtimeTrail.filter(point => point.time >= tenMinutesAgo);
+            }
+
+            // リアルタイム軌跡を青い線で描画（2点以上ある場合）
+            if (AppState.iss.isRealtimeMode && !window.selectedPass && AppState.iss.realtimeTrail.length > 1) {
+                ctx.strokeStyle = '#3b82f6'; // 青色
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 3]); // 破線スタイル
+                ctx.beginPath();
+
+                const firstPoint = azAltToCanvas(AppState.iss.realtimeTrail[0].azimuth, AppState.iss.realtimeTrail[0].altitude);
+                ctx.moveTo(firstPoint.x, firstPoint.y);
+
+                for (let i = 1; i < AppState.iss.realtimeTrail.length; i++) {
+                    const point = azAltToCanvas(AppState.iss.realtimeTrail[i].azimuth, AppState.iss.realtimeTrail[i].altitude);
+                    ctx.lineTo(point.x, point.y);
+                }
+
+                ctx.stroke();
+                ctx.setLineDash([]); // 破線をリセット
+            }
 
             if (issVisible) {
                 // ISSの位置を描画（赤い大きな円）
