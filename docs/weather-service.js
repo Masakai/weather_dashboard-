@@ -1,5 +1,5 @@
-import { AppState } from './state.js?v=3.2.2';
-import { METEOR_SHOWERS, SEASONAL_OBJECTS } from './constants.js?v=3.2.2';
+import { AppState } from './state.js?v=3.2.3';
+import { METEOR_SHOWERS, SEASONAL_OBJECTS } from './constants.js?v=3.2.3';
 
 export function calculateStarryScore(cloudCover, moonAge, humidity, visibility = 24, windSpeed = 5) {
     // 雲量スコア (0-100) - 雲が少ないほど高い
@@ -555,7 +555,7 @@ export function renderDashboard(targetMoment) {
     // 週間予報テーブル
     const weeklyBody = document.getElementById('weekly-forecast-body');
     weeklyBody.innerHTML = '';
-    
+
     daily.time.forEach((t, i) => {
         const date = moment(t);
         const isSelectedDay = date.isSame(targetMoment, 'day');
@@ -565,7 +565,7 @@ export function renderDashboard(targetMoment) {
         const minTemp = daily.temperature_2m_min[i];
         const rainSum = daily.precipitation_sum[i];
         const rainProb = daily.precipitation_probability_max[i];
-        
+
         // 月齢計算
         const moonInfo = calculateMoonData(date.toDate());
 
@@ -574,7 +574,7 @@ export function renderDashboard(targetMoment) {
         let cloudSum = 0;
         let humSum = 0;
         let count = 0;
-        
+
         // データ量が少ないので単純ループで集計
         hourly.time.forEach((hTime, hIndex) => {
             if (hTime.startsWith(dateStr)) {
@@ -583,13 +583,75 @@ export function renderDashboard(targetMoment) {
                 count++;
             }
         });
-        
+
         const avgCloud = count > 0 ? Math.round(cloudSum / count) : '-';
         const avgHum = count > 0 ? Math.round(humSum / count) : '-';
 
+        // この日の夜間の視認スコアを計算
+        let dayScore = 50; // デフォルト値
+        let scoreBgClass = 'bg-orange-500/10'; // デフォルトの背景色
+
+        try {
+            // この日の日没～翌日の日の出時刻を取得
+            const dayStart = date.clone().startOf('day').toDate();
+            const daySunMoonTimes = calculateSunMoonTimes(dayStart, AppState.location.lat, AppState.location.lon);
+            const nextDayStart = date.clone().add(1, 'day').startOf('day').toDate();
+            const nextDaySunMoonTimes = calculateSunMoonTimes(nextDayStart, AppState.location.lat, AppState.location.lon);
+
+            // 夜間の範囲を設定
+            const nightStart = daySunMoonTimes.sunsetDate ? moment(daySunMoonTimes.sunsetDate) :
+                              date.clone().startOf('day').add(18, 'hours');
+            const nightEnd = nextDaySunMoonTimes.sunriseDate ? moment(nextDaySunMoonTimes.sunriseDate) :
+                            nightStart.clone().add(12, 'hours');
+
+            // 夜間の平均雲量・湿度・風速・視程を計算
+            let nightCloudSum = 0;
+            let nightHumSum = 0;
+            let nightWindSum = 0;
+            let nightVisSum = 0;
+            let nightCount = 0;
+
+            hourly.time.forEach((hTime, hIndex) => {
+                const time = moment(hTime);
+                if (time.isSameOrAfter(nightStart) && time.isBefore(nightEnd)) {
+                    nightCloudSum += hourly.cloud_cover[hIndex];
+                    nightHumSum += hourly.relative_humidity_2m[hIndex];
+                    nightWindSum += hourly.windspeed_10m ? hourly.windspeed_10m[hIndex] : 5;
+                    nightVisSum += hourly.visibility ? (hourly.visibility[hIndex] / 1000) : 24;
+                    nightCount++;
+                }
+            });
+
+            if (nightCount > 0) {
+                const avgNightCloud = nightCloudSum / nightCount;
+                const avgNightHum = nightHumSum / nightCount;
+                const avgNightWind = nightWindSum / nightCount;
+                const avgNightVis = nightVisSum / nightCount;
+
+                // 視認スコアを計算
+                dayScore = calculateStarryScore(avgNightCloud, moonInfo.age, avgNightHum, avgNightVis, avgNightWind);
+            }
+        } catch (error) {
+            console.error('視認スコア計算エラー:', error);
+        }
+
+        // スコアに応じた背景色を設定
+        if (dayScore >= 80) {
+            scoreBgClass = 'bg-green-500/15';
+        } else if (dayScore >= 60) {
+            scoreBgClass = 'bg-blue-500/15';
+        } else if (dayScore >= 40) {
+            scoreBgClass = 'bg-orange-500/15';
+        } else if (dayScore >= 20) {
+            scoreBgClass = 'bg-red-500/15';
+        } else {
+            scoreBgClass = 'bg-red-500/20';
+        }
+
         const row = document.createElement('tr');
         // cursor-pointer を追加、onclickを追加
-        row.className = `border-b border-slate-700/50 transition cursor-pointer ${isSelectedDay ? 'bg-blue-500/20 border-l-4 border-l-blue-400' : 'hover:bg-white/5'}`;
+        // 選択された日の場合は青色の背景、それ以外は視認スコアに応じた背景色
+        row.className = `border-b border-slate-700/50 transition cursor-pointer ${isSelectedDay ? 'bg-blue-500/20 border-l-4 border-l-blue-400' : scoreBgClass + ' hover:bg-white/5'}`;
         row.onclick = () => selectDate(t); // クリックイベント
 
         row.innerHTML = `

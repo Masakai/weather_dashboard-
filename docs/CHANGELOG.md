@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.3] - 2026-01-18
+
+### Added
+- `weather-service.js`: 週間天気予報パネルの各日の背景を視認スコアに基づいた透過色で表示
+  - 各日の夜間（日没～翌日日の出）の平均雲量・湿度・風速・視程から視認スコアを計算
+  - スコアに応じて背景色を5段階で色分け（緑:80以上、青:60以上、オレンジ:40以上、赤:20以上、濃い赤:20未満）
+  - 選択された日は従来通り青色の背景を維持
+  - 一目で観測に適した日を判別できるようになり、観測計画の立案が容易に
+
+### Improved
+- 週間予報の視認性と使いやすさが向上し、観測日の選択がより直感的に
+
 ## [3.2.2] - 2026-01-18
 
 ### Added
