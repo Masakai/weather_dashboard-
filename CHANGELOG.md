@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.9] - 2026-01-18
+
+### Improved
+- `CLAUDE.md`: AI支援開発ガイドに「コミット前の必須チェックリスト」セクションを追加
+  - バージョンアップの判断基準と実行手順を明確化
+  - README.md、CHANGELOG.md、モジュールインポートの更新手順を詳細に記載
+  - チェックリスト例を追加し、作業漏れを防止
+  - キャッシュ問題やバージョン不整合を防ぐための重要な永続的ガイドラインを確立
+
 ## [3.1.8] - 2026-01-17
 
 ### Fixed

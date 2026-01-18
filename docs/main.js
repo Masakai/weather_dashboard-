@@ -2,12 +2,12 @@
  * メインルーチン
  */
 
-import { AppState } from './state.js?v=3.1.8';
-import * as uiUtils from './ui-utils.js?v=3.1.8';
-import * as locationService from './location-service.js?v=3.1.8';
-import * as weatherService from './weather-service.js?v=3.1.8';
-import * as issService from './iss-service.js?v=3.1.8';
-import * as astronomyService from './astronomy-service.js?v=3.1.8';
+import { AppState } from './state.js?v=3.1.9';
+import * as uiUtils from './ui-utils.js?v=3.1.9';
+import * as locationService from './location-service.js?v=3.1.9';
+import * as weatherService from './weather-service.js?v=3.1.9';
+import * as issService from './iss-service.js?v=3.1.9';
+import * as astronomyService from './astronomy-service.js?v=3.1.9';
 
 // 全ての関数をマージしてグローバルスコープに登録（互換性維持のため）
 const allFunctions = {
