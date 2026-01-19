@@ -1,5 +1,5 @@
-import { AppState } from './state.js?v=3.3.6';
-import { METEOR_SHOWERS, SEASONAL_OBJECTS } from './constants.js?v=3.3.6';
+import { AppState } from './state.js?v=3.3.7';
+import { METEOR_SHOWERS, SEASONAL_OBJECTS } from './constants.js?v=3.3.7';
 
 export function calculateStarryScore(cloudCover, moonAge, humidity, visibility = 24, windSpeed = 5) {
     // 雲量スコア (0-100) - 雲が少ないほど高い
@@ -509,6 +509,42 @@ export function renderDashboard(targetMoment) {
     const cloudMid = hourly.cloud_cover_mid.slice(sliceStart, sliceEnd);
     const cloudHigh = hourly.cloud_cover_high.slice(sliceStart, sliceEnd);
 
+    // 現時刻マーカーの計算
+    const now = moment();
+    const rangeStartTime = moment(hourly.time[sliceStart]);
+    const rangeEndTime = moment(hourly.time[sliceEnd - 1]).add(1, 'hour');
+    let nowIndex = -1;
+    if (now.isSameOrAfter(rangeStartTime) && now.isBefore(rangeEndTime)) {
+        nowIndex = now.diff(rangeStartTime, 'minutes') / 60;
+    }
+
+    const nowMarkerPlugin = {
+        id: 'nowMarker',
+        afterDraw: (chart) => {
+            if (nowIndex >= 0 && nowIndex < labels.length) {
+                const {ctx, chartArea: {top, bottom}, scales: {x}} = chart;
+                const leftX = x.getPixelForValue(labels[Math.floor(nowIndex)]);
+                const rightX = x.getPixelForValue(labels[Math.min(Math.ceil(nowIndex), labels.length - 1)]);
+                const xPos = leftX + (rightX - leftX) * (nowIndex - Math.floor(nowIndex));
+
+                ctx.save();
+                ctx.setLineDash([5, 5]);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.beginPath();
+                ctx.moveTo(xPos, top);
+                ctx.lineTo(xPos, bottom);
+                ctx.stroke();
+
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('現在', xPos, top + 15);
+                ctx.restore();
+            }
+        }
+    };
+
     // 気温チャート
     const ctxTemp = document.getElementById('tempChart').getContext('2d');
     if(AppState.ui.charts.temp) AppState.ui.charts.temp.destroy();
@@ -543,7 +579,8 @@ export function renderDashboard(targetMoment) {
                 y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#94a3b8' } },
                 x: { grid: { display: false }, ticks: { color: '#94a3b8', maxTicksLimit: 8 } }
             }
-        }
+        },
+        plugins: [nowMarkerPlugin]
     });
 
     // 雲チャート（個別線グラフ：積み重ねなし）
@@ -576,7 +613,8 @@ export function renderDashboard(targetMoment) {
                 y: { stacked: false, beginAtZero: true, max: 100, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#94a3b8', callback: (value) => value + '%' } },
                 x: { grid: { display: false }, ticks: { color: '#94a3b8', maxTicksLimit: 8 } }
             }
-        }
+        },
+        plugins: [nowMarkerPlugin]
     });
 
     // 週間予報テーブル
