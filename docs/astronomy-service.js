@@ -166,7 +166,7 @@ export function renderTimeline(todayTimes, nextDayTimes, targetDate, hourlyData 
         const indicator = document.createElement('div');
         indicator.className = 'absolute top-0 w-0.5 h-full bg-red-500 z-10';
         indicator.style.left = `${targetPos}%`;
-        indicator.innerHTML = '<div class="absolute -top-6 left-1/2 -translate-x-1/2 bg-red-500 text-white text-[10px] px-1 rounded shadow-lg whitespace-nowrap">選択中</div>';
+        indicator.innerHTML = '<div class="absolute -top-6 left-1/2 -translate-x-1/2 bg-red-500 text-white text-xs px-1 rounded shadow-lg whitespace-nowrap">選択中</div>';
         container.appendChild(indicator);
     }
 

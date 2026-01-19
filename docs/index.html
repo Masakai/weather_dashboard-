@@ -179,7 +179,7 @@
         
         <div id="dashboard-content" class="hidden space-y-6">
             <!-- 星空視認性スコア（大型表示） -->
-            <div class="glass-panel rounded-2xl p-6">
+            <div class="glass-panel rounded-2xl p-4 md:p-6">
                 <div class="flex flex-col md:flex-row items-center justify-between gap-6">
                     <div class="flex flex-col items-center justify-center">
                         <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -217,217 +217,220 @@
                 </div>
             </div>
 
-            <!-- メイン指標 -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <!-- 気温カード -->
-                <div class="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center relative overflow-hidden group hover:bg-white/5 transition">
-                    <div class="absolute top-4 left-4 text-slate-400 text-sm font-medium uppercase tracking-wider">指定時刻の気温</div>
-                    <i data-lucide="thermometer" class="w-12 h-12 text-orange-400 mb-4"></i>
-                    <div class="text-5xl font-bold mb-1" id="current-temp">--°C</div>
-                    <div class="text-slate-300">気温</div>
-                </div>
-
-                <!-- 雲量カード -->
-                <div class="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center relative overflow-hidden hover:bg-white/5 transition">
-                    <div class="absolute top-4 left-4 text-slate-400 text-sm font-medium uppercase tracking-wider">指定時刻の雲量</div>
-                    <i data-lucide="cloud" class="w-12 h-12 text-slate-300 mb-4"></i>
-                    <div class="text-5xl font-bold mb-1" id="current-clouds">--%</div>
-                    <div class="text-slate-300">全天雲量</div>
-                </div>
-
-                <!-- 雲の詳細 -->
-                <div class="glass-panel rounded-2xl p-6 flex flex-col justify-center gap-4 hover:bg-white/5 transition">
-                    <div class="text-slate-400 text-sm font-medium uppercase tracking-wider mb-2">雲の層（高度別）</div>
-                    
-                    <div class="flex justify-between items-center">
-                        <span class="text-slate-300 flex items-center gap-2"><i data-lucide="arrow-up" class="w-4 h-4"></i> 上層雲</span>
-                        <span class="font-bold text-lg" id="clouds-high">--%</span>
-                    </div>
-                    <div class="w-full bg-slate-700/50 rounded-full h-2">
-                        <!-- 上層雲: Violet -->
-                        <div id="bar-high" class="bg-violet-400 h-2 rounded-full" style="width: 0%"></div>
-                    </div>
-
-                    <div class="flex justify-between items-center mt-1">
-                        <span class="text-slate-300 flex items-center gap-2"><i data-lucide="minus" class="w-4 h-4"></i> 中層雲</span>
-                        <span class="font-bold text-lg" id="clouds-mid">--%</span>
-                    </div>
-                    <div class="w-full bg-slate-700/50 rounded-full h-2">
-                        <!-- 中層雲: Emerald -->
-                        <div id="bar-mid" class="bg-emerald-400 h-2 rounded-full" style="width: 0%"></div>
-                    </div>
-
-                    <div class="flex justify-between items-center mt-1">
-                        <span class="text-slate-300 flex items-center gap-2"><i data-lucide="arrow-down" class="w-4 h-4"></i> 下層雲</span>
-                        <span class="font-bold text-lg" id="clouds-low">--%</span>
-                    </div>
-                    <div class="w-full bg-slate-700/50 rounded-full h-2">
-                        <!-- 下層雲: 明るいグレー -->
-                        <div id="bar-low" class="bg-gray-300 h-2 rounded-full" style="width: 0%"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 追加気象データ + 天文薄明時刻 -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <!-- 追加気象データ -->
-                <div class="glass-panel rounded-2xl p-6">
-                    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                        <i data-lucide="gauge" class="text-cyan-400 w-5 h-5"></i> 詳細気象データ
+            <!-- 気象詳細統合パネル -->
+            <div class="glass-panel rounded-2xl p-4 md:p-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-slate-700/50 pb-4">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <i data-lucide="gauge" class="text-blue-400 w-5 h-5"></i>
+                        気象詳細（指定時刻）
                     </h3>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-slate-800/50 rounded-lg p-3">
-                            <div class="text-xs text-slate-400 mb-1">風速・風向</div>
-                            <div class="text-xl font-bold" id="wind-speed">-- m/s</div>
-                            <div class="text-sm text-slate-300" id="wind-direction">--</div>
-                        </div>
-                        <div class="bg-slate-800/50 rounded-lg p-3">
-                            <div class="text-xs text-slate-400 mb-1">気圧</div>
-                            <div class="text-xl font-bold" id="pressure">-- hPa</div>
-                        </div>
-                        <div class="bg-slate-800/50 rounded-lg p-3">
-                            <div class="text-xs text-slate-400 mb-1">露点温度</div>
-                            <div class="text-xl font-bold" id="dewpoint">--°C</div>
-                            <div class="text-xs text-slate-400" id="condensation-risk">--</div>
-                        </div>
-                        <div class="bg-slate-800/50 rounded-lg p-3">
-                            <div class="text-xs text-slate-400 mb-1">視程</div>
-                            <div class="text-xl font-bold" id="visibility">-- km</div>
-                        </div>
+                    <div id="today-summary-display" class="text-sm md:text-base text-slate-300 flex flex-wrap gap-4">
+                        <!-- JSで今日の最高/最低気温、天気などを表示 -->
                     </div>
                 </div>
 
-                <!-- 天体観測時間帯 -->
-                <div class="glass-panel rounded-2xl p-6">
-                    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                        <i data-lucide="stars" class="text-yellow-400 w-5 h-5"></i> 天体観測の時間帯
-                    </h3>
-
-                    <!-- 観測可能時間（最重要情報） -->
-                    <div class="bg-slate-800/50 rounded-lg p-3 mb-4 border border-green-500/30">
-                        <div class="text-xs text-green-400 mb-2 flex items-center gap-1">
-                            <i data-lucide="telescope" class="w-3 h-3"></i> 観測に最適な時間帯
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <div class="text-center">
-                                <div class="text-xs text-slate-400">観測開始</div>
-                                <div class="font-mono font-bold text-lg text-green-300" id="observation-start-time">--:--</div>
-                                <div class="text-xs text-slate-500">完全に暗くなる</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <!-- 気温と雲量 -->
+                    <div class="space-y-6">
+                        <div class="flex items-center gap-4">
+                            <div class="bg-orange-500/10 p-3 rounded-xl">
+                                <i data-lucide="thermometer" class="w-8 h-8 text-orange-400"></i>
                             </div>
-                            <div class="text-slate-500 text-2xl">→</div>
-                            <div class="text-center">
-                                <div class="text-xs text-slate-400">観測終了</div>
-                                <div class="font-mono font-bold text-lg text-orange-300" id="observation-end-time">--:--</div>
-                                <div class="text-xs text-slate-500">明るくなり始め</div>
+                            <div>
+                                <div class="text-xs text-slate-400 uppercase tracking-wider mb-1">気温</div>
+                                <div class="text-3xl font-bold" id="current-temp">--°C</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="bg-blue-500/10 p-3 rounded-xl">
+                                <i data-lucide="cloud" class="w-8 h-8 text-slate-300"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs text-slate-400 uppercase tracking-wider mb-1">全天雲量</div>
+                                <div class="text-3xl font-bold" id="current-clouds">--%</div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 夕方→夜 -->
-                    <div class="mb-3">
-                        <div class="text-xs text-orange-400 mb-2 flex items-center gap-1">
-                            <i data-lucide="sunset" class="w-3 h-3"></i> 夕方の流れ
-                        </div>
-                        <div class="space-y-1 text-sm pl-2 border-l-2 border-orange-500/30">
-                            <div class="flex items-center justify-between">
-                                <span class="text-slate-400">日の入り</span>
-                                <span class="font-mono" id="sunset-time">--:--</span>
+                    <!-- 雲の層詳細 -->
+                    <div class="space-y-3">
+                        <div class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">雲の層（高度別）</div>
+                        
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-300 flex items-center gap-1"><i data-lucide="arrow-up" class="w-3 h-3"></i> 上層雲</span>
+                                <span class="font-bold" id="clouds-high">--%</span>
                             </div>
-                            <div class="flex items-center justify-between text-slate-500 text-xs">
-                                <span>↓ 約1時間で暗くなる</span>
+                            <div class="w-full bg-slate-700/50 rounded-full h-1.5">
+                                <div id="bar-high" class="bg-violet-400 h-1.5 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-300 flex items-center gap-1"><i data-lucide="minus" class="w-3 h-3"></i> 中層雲</span>
+                                <span class="font-bold" id="clouds-mid">--%</span>
+                            </div>
+                            <div class="w-full bg-slate-700/50 rounded-full h-1.5">
+                                <div id="bar-mid" class="bg-emerald-400 h-1.5 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-300 flex items-center gap-1"><i data-lucide="arrow-down" class="w-3 h-3"></i> 下層雲</span>
+                                <span class="font-bold" id="clouds-low">--%</span>
+                            </div>
+                            <div class="w-full bg-slate-700/50 rounded-full h-1.5">
+                                <div id="bar-low" class="bg-gray-300 h-1.5 rounded-full" style="width: 0%"></div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 夜→朝 -->
-                    <div class="mb-3">
-                        <div class="text-xs text-blue-400 mb-2 flex items-center gap-1">
-                            <i data-lucide="sunrise" class="w-3 h-3"></i> 朝方の流れ
+                    <!-- 詳細データ -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="bg-slate-800/40 rounded-xl p-2 border border-slate-700/30">
+                            <div class="text-xs text-slate-400 uppercase mb-0.5">風速</div>
+                            <div class="text-sm font-bold" id="wind-speed">-- m/s</div>
+                            <div id="wind-direction" class="text-xs text-slate-400">--</div>
                         </div>
-                        <div class="space-y-1 text-sm pl-2 border-l-2 border-blue-500/30">
-                            <div class="flex items-center justify-between text-slate-500 text-xs">
-                                <span>↓ 約1時間で明るくなる</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-slate-400">日の出</span>
-                                <span class="font-mono" id="sunrise-time">--:--</span>
-                            </div>
+                        <div class="bg-slate-800/40 rounded-xl p-2 border border-slate-700/30">
+                            <div class="text-xs text-slate-400 uppercase mb-0.5">気圧</div>
+                            <div class="text-sm font-bold" id="pressure">-- hPa</div>
+                        </div>
+                        <div class="bg-slate-800/40 rounded-xl p-2 border border-slate-700/30">
+                            <div class="text-xs text-slate-400 uppercase mb-0.5">露点</div>
+                            <div class="text-sm font-bold" id="dewpoint">--°C</div>
+                            <div id="condensation-risk" class="text-xs text-slate-400">--</div>
+                        </div>
+                        <div class="bg-slate-800/40 rounded-xl p-2 border border-slate-700/30">
+                            <div class="text-xs text-slate-400 uppercase mb-0.5">視程</div>
+                            <div class="text-sm font-bold" id="visibility">-- km</div>
                         </div>
                     </div>
 
-                    <!-- 月の出没 -->
-                    <div class="border-t border-slate-700 pt-3">
-                        <div class="text-xs text-slate-400 mb-2 flex items-center gap-1">
-                            <i data-lucide="moon" class="w-3 h-3"></i> 月の出没（月明かりの影響）
-                        </div>
-                        <div class="grid grid-cols-2 gap-3 text-sm">
-                            <div class="flex items-center justify-between">
-                                <span class="text-slate-400">月の出</span>
-                                <span class="font-mono" id="moonrise-time">--:--</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-slate-400">月の入</span>
-                                <span class="font-mono" id="moonset-time">--:--</span>
-                            </div>
-                        </div>
-                        <div class="text-xs text-slate-500 mt-2">※ 月が出ている間は淡い天体が見えにくくなります</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 夜間観測タイムライン -->
-            <div class="glass-panel rounded-2xl p-6">
-                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <i data-lucide="moon-star" class="text-purple-400 w-5 h-5"></i> 夜間観測タイムライン
-                </h3>
-                <div id="timeline-period" class="text-xs text-slate-400 mb-2"></div>
-                <div id="timeline-container" class="timeline-bar"></div>
-                <div id="timeline-labels" class="flex items-center justify-between mt-3 text-xs text-slate-400"></div>
-                <div class="flex items-center gap-4 mt-3 text-xs flex-wrap">
-                    <div class="flex items-center gap-1">
-                        <div class="w-4 h-4 bg-blue-500 opacity-70 rounded"></div>
-                        <span>薄明</span>
-                    </div>
-                    <div class="flex items-center gap-1">
-                        <div class="w-4 h-4 bg-green-500 opacity-70 rounded"></div>
-                        <span>適時 (0-20%)</span>
-                    </div>
-                    <div class="flex items-center gap-1">
-                        <div class="w-4 h-4 bg-yellow-500 opacity-70 rounded"></div>
-                        <span>注意 (20-50%)</span>
-                    </div>
-                    <div class="flex items-center gap-1">
-                        <div class="w-4 h-4 bg-orange-500 opacity-70 rounded"></div>
-                        <span>不適 (50-80%)</span>
-                    </div>
-                    <div class="flex items-center gap-1">
-                        <div class="w-4 h-4 bg-red-500 opacity-70 rounded"></div>
-                        <span>不可 (80-100%)</span>
-                    </div>
-                </div>
-            </div>
-
-             <!-- サマリーエリア（拡張版：天気分析＋月齢） -->
-             <div class="glass-panel rounded-2xl p-6">
-                <div class="flex flex-col md:flex-row gap-6">
-                    <!-- 左側：天気サマリー -->
-                    <div class="flex-1 flex flex-col justify-center border-l-4 border-blue-400 pl-4">
-                        <p class="text-slate-300 italic" id="forecast-summary">予報を分析中...</p>
-                        <p class="text-xs text-slate-500 mt-2" id="summary-timestamp">--</p>
-                    </div>
-
-                    <!-- 右側：月齢情報 -->
-                    <div class="flex flex-col items-center justify-center min-w-[150px] border-t md:border-t-0 md:border-l border-slate-700 pt-4 md:pt-0 md:pl-6">
+                    <!-- 月齢情報 -->
+                    <div class="flex flex-col items-center justify-center bg-slate-800/20 rounded-xl p-3 border border-slate-700/30">
                         <div class="text-xs text-slate-400 mb-1 uppercase tracking-wider">Moon Phase</div>
-                        <div class="text-4xl mb-1" id="current-moon-icon">🌑</div>
-                        <div class="text-xl font-bold text-yellow-100" id="current-moon-age-text">--</div>
-                        <div class="text-sm text-yellow-200" id="current-moon-name">--</div>
+                        <div class="text-3xl mb-1" id="current-moon-icon">🌑</div>
+                        <div class="text-lg font-bold text-yellow-100" id="current-moon-age-text">--</div>
+                        <div class="text-xs text-yellow-200" id="current-moon-name">--</div>
                     </div>
                 </div>
-             </div>
+
+                <!-- 分析サマリー -->
+                <div class="bg-slate-800/30 rounded-xl p-4 border-l-4 border-blue-400">
+                    <p class="text-slate-300 italic text-sm md:text-base" id="forecast-summary">予報を分析中...</p>
+                    <p class="text-xs text-slate-500 mt-2" id="summary-timestamp">--</p>
+                </div>
+            </div>
+
+            <!-- 観測計画統合パネル -->
+            <div class="glass-panel rounded-2xl p-4 md:p-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-slate-700/50 pb-4 gap-2">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <i data-lucide="moon-star" class="text-purple-400 w-5 h-5"></i>
+                        今夜の観測計画（日没〜日の出）
+                    </h3>
+                    <div id="timeline-period" class="text-xs text-slate-400 font-mono"></div>
+                </div>
+
+                <!-- タイムラインセクション -->
+                <div class="mb-8">
+                    <div id="timeline-container" class="timeline-bar"></div>
+                    <div id="timeline-labels" class="flex items-center justify-between mt-3 text-xs text-slate-400 mb-4"></div>
+                    
+                    <div class="flex items-center gap-4 text-xs md:text-xs flex-wrap bg-slate-800/30 p-3 rounded-xl border border-slate-700/30">
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-3 h-3 bg-blue-500 opacity-70 rounded-sm"></div>
+                            <span class="text-slate-300">薄明</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-3 h-3 bg-green-500 opacity-70 rounded-sm"></div>
+                            <span class="text-slate-300">適時 (0-20%)</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-3 h-3 bg-yellow-500 opacity-70 rounded-sm"></div>
+                            <span class="text-slate-300">注意 (20-50%)</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-3 h-3 bg-orange-500 opacity-70 rounded-sm"></div>
+                            <span class="text-slate-300">不適 (50-80%)</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-3 h-3 bg-red-500 opacity-70 rounded-sm"></div>
+                            <span class="text-slate-300">不可 (80-100%)</span>
+                        </div>
+                        <div class="md:ml-auto text-slate-500 italic">※色は雲量による観測適性を示します</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- 左カラム: 観測推奨時間 -->
+                    <div class="space-y-4">
+                        <div class="bg-green-500/10 rounded-xl p-4 border border-green-500/20">
+                            <div class="text-xs text-green-400 mb-3 flex items-center gap-1.5 font-bold uppercase tracking-wider">
+                                <i data-lucide="telescope" class="w-4 h-4"></i> 観測に最適な時間帯
+                            </div>
+                            <div class="flex items-center justify-around">
+                                <div class="text-center">
+                                    <div class="text-xs text-slate-400 mb-1">観測開始 (天文薄明終了)</div>
+                                    <div class="font-mono font-bold text-2xl text-green-300" id="observation-start-time">--:--</div>
+                                </div>
+                                <div class="text-slate-600 text-3xl font-light">→</div>
+                                <div class="text-center">
+                                    <div class="text-xs text-slate-400 mb-1">観測終了 (天文薄明開始)</div>
+                                    <div class="font-mono font-bold text-2xl text-orange-300" id="observation-end-time">--:--</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-slate-800/40 rounded-xl p-4 border border-slate-700/30">
+                                <div class="text-xs text-orange-400 mb-2 flex items-center gap-1.5 font-bold">
+                                    <i data-lucide="sunset" class="w-4 h-4"></i> 夕方の流れ
+                                </div>
+                                <div class="flex justify-between items-baseline">
+                                    <span class="text-xs text-slate-400">日の入り</span>
+                                    <span class="font-mono font-bold text-lg" id="sunset-time">--:--</span>
+                                </div>
+                            </div>
+                            <div class="bg-slate-800/40 rounded-xl p-4 border border-slate-700/30">
+                                <div class="text-xs text-blue-400 mb-2 flex items-center gap-1.5 font-bold">
+                                    <i data-lucide="sunrise" class="w-4 h-4"></i> 朝方の流れ
+                                </div>
+                                <div class="flex justify-between items-baseline">
+                                    <span class="text-xs text-slate-400">日の出</span>
+                                    <span class="font-mono font-bold text-lg" id="sunrise-time">--:--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右カラム: 月の状況 -->
+                    <div class="bg-slate-800/40 rounded-xl p-4 border border-slate-700/30 flex flex-col justify-center">
+                        <div class="text-xs text-yellow-400 mb-4 flex items-center gap-1.5 font-bold uppercase tracking-wider">
+                            <i data-lucide="moon" class="w-4 h-4"></i> 月の出没（月明かりの影響）
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div class="flex flex-col items-center p-3 bg-slate-900/40 rounded-lg">
+                                <span class="text-xs text-slate-500 mb-1 uppercase">Moonrise</span>
+                                <span class="font-mono font-bold text-xl text-slate-200" id="moonrise-time">--:--</span>
+                            </div>
+                            <div class="flex flex-col items-center p-3 bg-slate-900/40 rounded-lg">
+                                <span class="text-xs text-slate-500 mb-1 uppercase">Moonset</span>
+                                <span class="font-mono font-bold text-xl text-slate-200" id="moonset-time">--:--</span>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-400 bg-slate-900/30 p-3 rounded-lg italic">
+                            ※ 月が出ている間は淡い天体が見えにくくなります。
+                        </p>
+                    </div>
+                </div>
+            </div>
 
             <!-- 天体イベント情報セクション -->
-            <div class="glass-panel rounded-2xl p-6">
+            <div class="glass-panel rounded-2xl p-4 md:p-6">
                 <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
                     <i data-lucide="star" class="text-yellow-400 w-5 h-5"></i> 天体イベント情報
                 </h3>
@@ -664,7 +667,7 @@
             </div>
 
             <!-- 観測適性レーダーチャート -->
-            <div class="glass-panel rounded-2xl p-6">
+            <div class="glass-panel rounded-2xl p-4 md:p-6">
                 <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
                     <i data-lucide="radar" class="text-pink-400 w-5 h-5"></i> 観測適性レーダーチャート
                 </h3>
@@ -677,7 +680,7 @@
             <!-- チャートセクション -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- 気温チャート -->
-                <div class="glass-panel rounded-2xl p-6">
+                <div class="glass-panel rounded-2xl p-4 md:p-6">
                     <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
                         <i data-lucide="clock" class="text-orange-400 w-5 h-5"></i> 気温予報 (指定時刻より24時間)
                     </h3>
@@ -687,7 +690,7 @@
                 </div>
 
                 <!-- 雲の積層チャート -->
-                <div class="glass-panel rounded-2xl p-6">
+                <div class="glass-panel rounded-2xl p-4 md:p-6">
                     <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
                         <i data-lucide="layers" class="text-blue-400 w-5 h-5"></i> 雲量推移 (指定時刻より24時間)
                     </h3>
@@ -698,13 +701,13 @@
             </div>
 
             <!-- 週間天気予報 -->
-            <div class="glass-panel rounded-2xl p-6">
+            <div class="glass-panel rounded-2xl p-4 md:p-6">
                 <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
                     <i data-lucide="calendar" class="text-green-400 w-5 h-5"></i> 週間天気予報
                     <span class="text-xs font-normal text-slate-400 ml-2">※日付をクリックするとその日の詳細を表示します</span>
                 </h3>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
+                    <table class="w-full text-left border-collapse min-w-[600px]">
                         <thead>
                             <tr class="text-slate-400 text-sm border-b border-slate-700">
                                 <th class="py-3 px-2">日付</th>
@@ -732,7 +735,7 @@
                 <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" class="text-blue-300 hover:underline">OpenStreetMap</a> (Map & Address Data) & 
                 <a href="https://celestrak.org/" target="_blank" rel="noopener noreferrer" class="text-blue-300 hover:underline">CelesTrak</a> (ISS TLE Data)
             </p>
-            <p class="text-xs border-t border-slate-700/50 pt-2">
+            <p class="text-xs border-t border-slate-700/50 pt-2 md:text-sm">
                 &copy; 2026 株式会社リバーランズ・コンサルティング
             </p>
         </footer>
@@ -774,7 +777,7 @@
                         <span>惑星（高度>0度）</span>
                     </div>
                     <div>※ 観測地点から見える空を方位角・高度で表示（地平座標系）</div>
-                    <div class="text-[10px]">※ astronomy-engineの制限により恒星は表示されません</div>
+                    <div class="text-xs">※ astronomy-engineの制限により恒星は表示されません</div>
                 </div>
             </div>
         </div>

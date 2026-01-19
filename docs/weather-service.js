@@ -237,6 +237,33 @@ export function renderDashboard(targetMoment) {
     document.getElementById('current-temp').innerText = `${currentTemp}°C`;
     document.getElementById('current-clouds').innerText = `${currentCloudTotal}%`;
     
+    // 今日一日の概要の更新
+    const todayIndex = daily.time.findIndex(t => moment(t).isSame(targetMoment, 'day'));
+    if (todayIndex !== -1) {
+        const todayMax = daily.temperature_2m_max[todayIndex];
+        const todayMin = daily.temperature_2m_min[todayIndex];
+        const todayCode = daily.weathercode[todayIndex];
+        const todayWeather = getWeatherInfo(todayCode);
+        
+        const summaryDisplay = document.getElementById('today-summary-display');
+        if (summaryDisplay) {
+            summaryDisplay.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="text-slate-400">今日:</span>
+                    <i data-lucide="${todayWeather.icon}" class="w-4 h-4 ${todayWeather.color}"></i>
+                    <span>${todayWeather.label}</span>
+                </div>
+                <div class="flex items-center gap-3 ml-2">
+                    <span class="text-orange-400 font-medium">最高 ${todayMax}°C</span>
+                    <span class="text-blue-400 font-medium">最低 ${todayMin}°C</span>
+                </div>
+            `;
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        }
+    }
+    
     document.getElementById('clouds-high').innerText = `${currentHigh}%`;
     document.getElementById('bar-high').style.width = `${currentHigh}%`;
     

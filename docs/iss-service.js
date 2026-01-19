@@ -306,7 +306,7 @@ export async function calculateAndDisplayISS(date, observerLat, observerLon) {
                     <div class="mt-1 text-lg font-mono text-white">
                         ${timeStr}
                     </div>
-                    <div class="text-[10px] text-slate-500 mt-1">
+                    <div class="text-xs text-slate-500 mt-1">
                         開始時刻: ${moment(nextPass.startTime).format('M/D HH:mm:ss')} (最大高度 ${nextPass.maxElevation.toFixed(0)}°)
                     </div>
                 `;
@@ -337,11 +337,11 @@ export async function calculateAndDisplayISS(date, observerLat, observerLon) {
                         <span>方位角: <span class="text-white font-mono">${azimuth.toFixed(1)}°</span></span>
                         <span>仰角: <span class="text-white font-mono">${elevation.toFixed(1)}°</span></span>
                     </div>
-                    <div class="text-[10px] text-slate-400 mt-1">
+                    <div class="text-xs text-slate-400 mt-1">
                         地上距離: <span class="text-white font-mono">${groundDistance.toFixed(0)} km</span>
                     </div>
                 </div>
-                <div class="text-[10px] text-slate-500 mt-1 flex justify-between">
+                <div class="text-xs text-slate-500 mt-1 flex justify-between">
                     <span>TLE Source: CelesTrak</span>
                     <span>Real-time Update</span>
                 </div>
@@ -547,7 +547,7 @@ export async function calculateISSPasses() {
                             <div class="font-semibold text-white text-xs">${startStr}</div>
                             <div class="${qualityColor} text-xs font-bold">${quality}</div>
                         </div>
-                        <div class="grid grid-cols-3 gap-1 text-[10px]">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-1 text-xs">
                             <div>
                                 <span class="text-slate-400">最大高度:</span>
                                 <span class="text-white font-semibold">${pass.maxElevation.toFixed(1)}°</span>
@@ -561,7 +561,7 @@ export async function calculateISSPasses() {
                                 <span class="text-white">${(pass.maxDistance).toFixed(0)}km</span>
                             </div>
                         </div>
-                        <div class="text-[10px] text-slate-500 mt-1">
+                        <div class="text-xs text-slate-500 mt-1">
                             継続時間: ${duration.toFixed(0)}分 | クリックで軌道表示
                         </div>
                     </div>
