@@ -1,4 +1,4 @@
-import { AppState } from './state.js?v=3.3.7';
+import { AppState } from './state.js?v=3.3.8';
 
 export function requestISSNotificationPermission() {
     if ('Notification' in window) {
@@ -22,11 +22,14 @@ export function checkISSNotifications() {
     // 次の1時間以内のパスを探す
     for (let i = 0; i < AppState.iss.calculatedPasses.length; i++) {
         const pass = AppState.iss.calculatedPasses[i];
-        const passTime = new Date(pass.startTime);
+        // 肉眼可視パスの場合は可視開始時刻を使用
+        const passTime = pass.isVisibleToNakedEye && pass.visibleStart
+            ? new Date(pass.visibleStart)
+            : new Date(pass.startTime);
 
         // パスの開始時刻が55分〜65分後の範囲にあるかチェック（5分の猶予）
         if (passTime >= oneHourLater && passTime <= oneHourFiveMinLater) {
-            const passKey = pass.startTime.getTime().toString();
+            const passKey = passTime.getTime().toString();
 
             // まだ通知していないパスの場合
             if (!AppState.iss.notifiedPasses.has(passKey)) {
@@ -38,7 +41,11 @@ export function checkISSNotifications() {
     }
 }
 export function showISSNotification(pass) {
-    const startTime = moment(pass.startTime).format('HH:mm');
+    // 肉眼可視パスの場合は可視開始時刻を使用
+    const displayTime = pass.isVisibleToNakedEye && pass.visibleStart
+        ? pass.visibleStart
+        : pass.startTime;
+    const startTime = moment(displayTime).format('HH:mm');
     const maxElevation = pass.maxElevation.toFixed(1);
     const duration = Math.round((pass.endTime - pass.startTime) / 1000 / 60);
     const nakedEyeLabel = pass.isVisibleToNakedEye ? '【肉眼で観測可能】' : '【写真撮影向き】';
@@ -279,28 +286,36 @@ export async function calculateAndDisplayISS(date, observerLat, observerLon) {
             const nextPass = AppState.iss.calculatedPasses.find(p => p.startTime > date);
             if (nextPass) {
                 predictionPanel.classList.remove('hidden');
-                const diffMs = nextPass.startTime - date;
+
+                // 肉眼可視パスの場合は可視開始時刻を使用
+                const displayStartTime = nextPass.isVisibleToNakedEye && nextPass.visibleStart
+                    ? nextPass.visibleStart
+                    : nextPass.startTime;
+
+                const diffMs = displayStartTime - date;
                 const hours = Math.floor(diffMs / (1000 * 60 * 60));
                 const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
                 const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
-                
+
                 let timeStr = "";
                 if (hours > 0) timeStr += `${hours}時間`;
                 if (minutes > 0 || hours > 0) timeStr += `${minutes}分`;
                 timeStr += `${seconds}秒`;
 
+                const labelText = nextPass.isVisibleToNakedEye ? '次回肉眼観測可能まで' : '次回可視範囲に入るまで';
+
                 predictionContent.innerHTML = `
                     <div class="font-bold text-slate-400 flex items-center gap-1 text-sm">
                         <i data-lucide="clock" class="w-3 h-3"></i>
-                        次回可視範囲に入るまで
+                        ${labelText}
                     </div>
                     <div class="mt-1 text-2xl font-mono text-white">
                         ${timeStr}
                     </div>
                     <div class="text-sm mt-1 flex items-center gap-2">
-                        <span class="text-slate-500">開始: ${moment(nextPass.startTime).format('M/D HH:mm:ss')}</span>
-                        ${nextPass.isVisibleToNakedEye 
-                            ? '<span class="text-yellow-300 text-[10px] bg-yellow-500/20 px-1 rounded border border-yellow-500/30">肉眼可</span>' 
+                        <span class="text-slate-500">開始: ${moment(displayStartTime).format('M/D HH:mm:ss')}</span>
+                        ${nextPass.isVisibleToNakedEye
+                            ? '<span class="text-yellow-300 text-[10px] bg-yellow-500/20 px-1 rounded border border-yellow-500/30">肉眼可</span>'
                             : '<span class="text-slate-400 text-[10px] bg-slate-500/10 px-1 rounded border border-slate-500/20">撮影向</span>'}
                     </div>
                 `;
@@ -388,6 +403,106 @@ export async function calculateAndDisplayISS(date, observerLat, observerLon) {
         calculateISSPasses(); // asyncとして呼び出す（待機はしない）
     }
 }
+/**
+ * 指定時刻でのISSの仰角を計算するヘルパー関数
+ * @param {Object} satrec satellite.jsのsatrecオブジェクト
+ * @param {Date} date 計算時刻
+ * @param {number} observerLat 観測地の緯度
+ * @param {number} observerLon 観測地の経度
+ * @returns {number} 仰角（度）
+ */
+function getISSElevation(satrec, date, observerLat, observerLon) {
+    const positionAndVelocity = satellite.propagate(satrec, date);
+    if (!positionAndVelocity.position || typeof positionAndVelocity.position === 'boolean') {
+        return -90;
+    }
+    const positionEci = positionAndVelocity.position;
+    const gmst = satellite.gstime(date);
+    const observerGd = {
+        longitude: satellite.degreesToRadians(observerLon),
+        latitude: satellite.degreesToRadians(observerLat),
+        height: 0
+    };
+    const positionEcf = satellite.eciToEcf(positionEci, gmst);
+    const lookAngles = satellite.ecfToLookAngles(observerGd, positionEcf);
+    return satellite.radiansToDegrees(lookAngles.elevation);
+}
+
+/**
+ * 二分探索でパス境界時刻（仰角が0度になる時刻）を正確に求める
+ * @param {Object} satrec satellite.jsのsatrecオブジェクト
+ * @param {number} startMs 探索開始時刻（ミリ秒）
+ * @param {number} endMs 探索終了時刻（ミリ秒）
+ * @param {number} observerLat 観測地の緯度
+ * @param {number} observerLon 観測地の経度
+ * @param {boolean} findRising trueの場合は上昇時、falseの場合は下降時を探索
+ * @returns {Date} 境界時刻
+ */
+function findPassBoundary(satrec, startMs, endMs, observerLat, observerLon, findRising) {
+    const tolerance = 1000; // 1秒の精度
+
+    while (endMs - startMs > tolerance) {
+        const midMs = Math.floor((startMs + endMs) / 2);
+        const midDate = new Date(midMs);
+        const elevation = getISSElevation(satrec, midDate, observerLat, observerLon);
+
+        if (findRising) {
+            // 上昇時：仰角 < 0 なら後半を探索、仰角 >= 0 なら前半を探索
+            if (elevation < 0) {
+                startMs = midMs;
+            } else {
+                endMs = midMs;
+            }
+        } else {
+            // 下降時：仰角 > 0 なら後半を探索、仰角 <= 0 なら前半を探索
+            if (elevation > 0) {
+                startMs = midMs;
+            } else {
+                endMs = midMs;
+            }
+        }
+    }
+
+    return new Date(Math.floor((startMs + endMs) / 2));
+}
+
+/**
+ * 肉眼可視開始時刻を求める（ISSが照らされ、かつ観測地が暗い最初の時刻）
+ * @param {Object} satrec satellite.jsのsatrecオブジェクト
+ * @param {Date} passStart パス開始時刻
+ * @param {Date} passEnd パス終了時刻
+ * @param {number} observerLat 観測地の緯度
+ * @param {number} observerLon 観測地の経度
+ * @returns {Object|null} {visibleStart, visibleEnd} または null（可視期間がない場合）
+ */
+function findVisiblePeriod(satrec, passStart, passEnd, observerLat, observerLon) {
+    const interval = 10000; // 10秒刻みで探索
+    let visibleStart = null;
+    let visibleEnd = null;
+
+    for (let time = passStart.getTime(); time <= passEnd.getTime(); time += interval) {
+        const date = new Date(time);
+        const isIllum = isISSIlluminated(date, satrec);
+        const isDark = isLocationDark(date, observerLat, observerLon);
+        const elevation = getISSElevation(satrec, date, observerLat, observerLon);
+
+        if (isIllum && isDark && elevation > 0) {
+            if (!visibleStart) {
+                visibleStart = date;
+            }
+            visibleEnd = date;
+        } else if (visibleStart && visibleEnd) {
+            // 可視期間が終了した
+            break;
+        }
+    }
+
+    if (visibleStart && visibleEnd) {
+        return { visibleStart, visibleEnd };
+    }
+    return null;
+}
+
 export async function calculateISSPasses() {
     const container = document.getElementById('iss-passes-list');
     if (!container) return;
@@ -409,14 +524,18 @@ export async function calculateISSPasses() {
         const passes = [];
         const now = new Date();
         const endTime = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7日後まで
-        const interval = 60 * 1000; // 1分刻み
+        const interval = 60 * 1000; // 1分刻みで粗く探索
 
         const satrec = satellite.twoline2satrec(window.currentTLE.line1, window.currentTLE.line2);
+        const observerLat = AppState.location.lat;
+        const observerLon = AppState.location.lon;
 
         let currentPass = null;
         let maxElevation = -90;
         let maxElevationTime = null;
         let maxDistance = 0;
+        let prevElevation = -90;
+        let prevTime = now.getTime();
 
         console.time('ISS Pass Calculation');
 
@@ -434,8 +553,8 @@ export async function calculateISSPasses() {
                 const gmst = satellite.gstime(date);
 
                 const observerGd = {
-                    longitude: satellite.degreesToRadians(AppState.location.lon),
-                    latitude: satellite.degreesToRadians(AppState.location.lat),
+                    longitude: satellite.degreesToRadians(observerLon),
+                    latitude: satellite.degreesToRadians(observerLat),
                     height: 0
                 };
 
@@ -449,11 +568,15 @@ export async function calculateISSPasses() {
                 if (elevation > 0) {
                     // パス中
                     if (!currentPass) {
-                        // 新しいパス開始
+                        // 新しいパス開始 - 二分探索で正確な開始時刻を求める
+                        const preciseStartTime = findPassBoundary(satrec, prevTime, time, observerLat, observerLon, true);
+                        const startLookAngles = satellite.ecfToLookAngles(observerGd,
+                            satellite.eciToEcf(satellite.propagate(satrec, preciseStartTime).position, satellite.gstime(preciseStartTime)));
+
                         currentPass = {
-                            startTime: date,
-                            startElevation: elevation,
-                            startAzimuth: azimuth
+                            startTime: preciseStartTime,
+                            startElevation: satellite.radiansToDegrees(startLookAngles.elevation),
+                            startAzimuth: satellite.radiansToDegrees(startLookAngles.azimuth)
                         };
                         maxElevation = elevation;
                         maxElevationTime = date;
@@ -469,20 +592,27 @@ export async function calculateISSPasses() {
                 } else {
                     // 地平線下
                     if (currentPass) {
-                        // パス終了
-                        currentPass.endTime = new Date(time - interval); // 1分前
+                        // パス終了 - 二分探索で正確な終了時刻を求める
+                        const preciseEndTime = findPassBoundary(satrec, prevTime, time, observerLat, observerLon, false);
+
+                        currentPass.endTime = preciseEndTime;
                         currentPass.maxElevation = maxElevation;
                         currentPass.maxElevationTime = maxElevationTime;
                         currentPass.maxDistance = maxDistance;
 
                         // 最大高度が10度以上のパスのみ記録
                         if (maxElevation >= 10) {
-                            // 肉眼での視認性を判定（パスの中間点あたりで判定するか、開始・最大・終了のいずれかで判定）
-                            const isVisible = (isISSIlluminated(currentPass.startTime, satrec) && isLocationDark(currentPass.startTime, AppState.location.lat, AppState.location.lon)) ||
-                                              (isISSIlluminated(maxElevationTime, satrec) && isLocationDark(maxElevationTime, AppState.location.lat, AppState.location.lon)) ||
-                                              (isISSIlluminated(new Date(time - interval), satrec) && isLocationDark(new Date(time - interval), AppState.location.lat, AppState.location.lon));
-                            
-                            currentPass.isVisibleToNakedEye = isVisible;
+                            // 肉眼可視期間を計算
+                            const visiblePeriod = findVisiblePeriod(satrec, currentPass.startTime, currentPass.endTime, observerLat, observerLon);
+
+                            if (visiblePeriod) {
+                                currentPass.isVisibleToNakedEye = true;
+                                currentPass.visibleStart = visiblePeriod.visibleStart;
+                                currentPass.visibleEnd = visiblePeriod.visibleEnd;
+                            } else {
+                                currentPass.isVisibleToNakedEye = false;
+                            }
+
                             passes.push(currentPass);
                         }
 
@@ -490,6 +620,9 @@ export async function calculateISSPasses() {
                         maxElevation = -90;
                     }
                 }
+
+                prevElevation = elevation;
+                prevTime = time;
             }
 
             // 一定ステップごとにUIスレッドに制御を戻す
@@ -508,11 +641,16 @@ export async function calculateISSPasses() {
             currentPass.maxDistance = maxDistance;
 
             if (maxElevation >= 10) {
-                const isVisible = (isISSIlluminated(currentPass.startTime, satrec) && isLocationDark(currentPass.startTime, AppState.location.lat, AppState.location.lon)) ||
-                                  (isISSIlluminated(maxElevationTime, satrec) && isLocationDark(maxElevationTime, AppState.location.lat, AppState.location.lon)) ||
-                                  (isISSIlluminated(endTime, satrec) && isLocationDark(endTime, AppState.location.lat, AppState.location.lon));
-                
-                currentPass.isVisibleToNakedEye = isVisible;
+                const visiblePeriod = findVisiblePeriod(satrec, currentPass.startTime, currentPass.endTime, observerLat, observerLon);
+
+                if (visiblePeriod) {
+                    currentPass.isVisibleToNakedEye = true;
+                    currentPass.visibleStart = visiblePeriod.visibleStart;
+                    currentPass.visibleEnd = visiblePeriod.visibleEnd;
+                } else {
+                    currentPass.isVisibleToNakedEye = false;
+                }
+
                 passes.push(currentPass);
             }
         }
@@ -526,7 +664,12 @@ export async function calculateISSPasses() {
         } else {
             container.innerHTML = passes.map((pass, index) => {
                 const duration = (pass.endTime - pass.startTime) / 1000 / 60; // 分単位
-                const startStr = moment(pass.startTime).format('M/D HH:mm');
+
+                // 肉眼可視パスの場合は可視開始時刻を主表示、そうでなければ技術的開始時刻
+                const displayTime = pass.isVisibleToNakedEye && pass.visibleStart
+                    ? pass.visibleStart
+                    : pass.startTime;
+                const startStr = moment(displayTime).format('M/D HH:mm');
                 const maxStr = moment(pass.maxElevationTime).format('HH:mm');
 
                 // 高度による評価
@@ -546,8 +689,15 @@ export async function calculateISSPasses() {
                     qualityColor = 'text-slate-400';
                 }
 
-                const nakedEyeIcon = pass.isVisibleToNakedEye 
-                    ? '<span class="flex items-center gap-0.5 text-yellow-300 text-[10px] bg-yellow-500/20 px-1 rounded border border-yellow-500/30">肉眼可</span>' 
+                // 肉眼可視の場合は可視期間も表示
+                let visibleInfo = '';
+                if (pass.isVisibleToNakedEye && pass.visibleStart && pass.visibleEnd) {
+                    const visibleDuration = (pass.visibleEnd - pass.visibleStart) / 1000 / 60;
+                    visibleInfo = `<div class="text-yellow-200 text-[10px] mt-0.5">👁️ 可視: ${moment(pass.visibleStart).format('HH:mm')}～${moment(pass.visibleEnd).format('HH:mm')} (${visibleDuration.toFixed(0)}分)</div>`;
+                }
+
+                const nakedEyeIcon = pass.isVisibleToNakedEye
+                    ? '<span class="flex items-center gap-0.5 text-yellow-300 text-[10px] bg-yellow-500/20 px-1 rounded border border-yellow-500/30">肉眼可</span>'
                     : '<span class="flex items-center gap-0.5 text-slate-400 text-[10px] bg-slate-500/10 px-1 rounded border border-slate-500/20">撮影向</span>';
 
                 return `
@@ -559,13 +709,14 @@ export async function calculateISSPasses() {
                             </div>
                             <div class="${qualityColor} text-sm font-bold">${quality}</div>
                         </div>
+                        ${visibleInfo}
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-1 text-sm">
                             <div>
                                 <span class="text-slate-400">最大高度:</span>
                                 <span class="text-white font-semibold">${pass.maxElevation.toFixed(1)}°</span>
                             </div>
                             <div>
-                                <span class="text-slate-400">時刻:</span>
+                                <span class="text-slate-400">最高点:</span>
                                 <span class="text-white">${maxStr}</span>
                             </div>
                             <div>
@@ -574,7 +725,7 @@ export async function calculateISSPasses() {
                             </div>
                         </div>
                         <div class="text-sm text-slate-500 mt-1">
-                            継続時間: ${duration.toFixed(0)}分 | クリックで軌道表示
+                            通過時間: ${duration.toFixed(0)}分 | クリックで軌道表示
                         </div>
                     </div>
                 `;

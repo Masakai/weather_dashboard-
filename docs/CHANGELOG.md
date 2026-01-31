@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.8] - 2026-01-31
+
+### Fixed
+- `iss-service.js`: ISSパス予測時刻の精度を大幅に改善しました。
+  - パス開始/終了時刻を二分探索で1秒精度まで計算するようになりました（従来は1分刻み）。
+  - 肉眼可視パスの場合、「可視開始時刻」（ISSが太陽光に照らされ、かつ観測地が暗い時刻）を主要な時刻として表示するようになりました。
+  - これにより他のISS追跡アプリとの時刻差（約10分早い問題）を解消しました。
+
+### Added
+- `iss-service.js`: パス一覧に肉眼可視期間（開始時刻～終了時刻）を表示するようにしました。
+- カウントダウン表示で肉眼可視パスの場合は「次回肉眼観測可能まで」というラベルを表示するようにしました。
+
 ## [3.3.7] - 2026-01-19
 
 ### Added
