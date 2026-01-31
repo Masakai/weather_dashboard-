@@ -1,0 +1,34 @@
+name: WeatherDashboard
+options:
+  bundleIdPrefix: com.sakaimono
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  SWIFT_VERSION: 5.9
+  PRODUCT_BUNDLE_IDENTIFIER: com.sakaimono.weatherdashboard
+  DEVELOPMENT_TEAM: ""
+packages:
+  SwiftAA:
+    url: https://github.com/onekiloparsec/SwiftAA
+    from: 2.5.0
+targets:
+  WeatherDashboard:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    resources:
+      - path: Resources
+    dependencies:
+      - package: SwiftAA
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: "天体観測できるかな？"
+        UILaunchScreen:
+          UIColorName: ""
+        NSLocationWhenInUseUsageDescription: "現在地の天候と天体情報を表示するために位置情報を使用します。"
+        NSLocationAlwaysAndWhenInUseUsageDescription: "ISS通過通知のために位置情報を使用します。"
+        UIBackgroundModes:
+          - fetch
+        UIApplicationSupportsIndirectInputEvents: true

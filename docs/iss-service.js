@@ -1,4 +1,4 @@
-import { AppState } from './state.js?v=3.3.8';
+import { AppState } from './state.js?v=3.3.9';
 
 export function requestISSNotificationPermission() {
     if ('Notification' in window) {
@@ -477,6 +477,7 @@ function findPassBoundary(satrec, startMs, endMs, observerLat, observerLon, find
  */
 function findVisiblePeriod(satrec, passStart, passEnd, observerLat, observerLon) {
     const interval = 10000; // 10秒刻みで探索
+    const MIN_ELEVATION = 10; // 肉眼可視の最小仰角（度）- 大気減光と障害物を考慮
     let visibleStart = null;
     let visibleEnd = null;
 
@@ -486,7 +487,8 @@ function findVisiblePeriod(satrec, passStart, passEnd, observerLat, observerLon)
         const isDark = isLocationDark(date, observerLat, observerLon);
         const elevation = getISSElevation(satrec, date, observerLat, observerLon);
 
-        if (isIllum && isDark && elevation > 0) {
+        // 仰角10度以上で肉眼観測可能と判定（他のアプリとの整合性）
+        if (isIllum && isDark && elevation >= MIN_ELEVATION) {
             if (!visibleStart) {
                 visibleStart = date;
             }

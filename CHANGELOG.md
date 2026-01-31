@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.9] - 2026-01-31
+
+### Fixed
+- `iss-service.js`: 肉眼可視開始時刻の判定を他のアプリ（NASA Spot the Station等）と整合するように修正しました。
+  - 肉眼可視の最小仰角を0度から10度に変更。大気減光と地上障害物を考慮し、実際に見え始める時刻を正確に表示するようになりました。
+
 ## [3.3.8] - 2026-01-31
 
 ### Fixed
